@@ -19,13 +19,22 @@ export class SimpleBot {
      */
     async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
+        console.log(`onTurn: ${JSON.stringify(turnContext)}`);
         const activity = turnContext.activity;
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {
                     case 'login':
                         await turnContext.sendActivity('Sending an oauthCard');
-                        await turnContext.sendActivity({ attachments: [CardFactory.oauthCard("AAD-OAUTH", 'title', 'text')] });
+                        let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
+                        console.log(`Attachment: ${JSON.stringify(oauthCardAttachment)}`);
+                        await turnContext.sendActivity({ attachments: [oauthCardAttachment] });
+                        return;
+                    case 'signin':
+                        await turnContext.sendActivity('Sending an oauthCard');
+                        let signinCardAttachment = CardFactory.signinCard('title','http://localhost:8080/login?magic=xyzzy','text on the card');
+                        console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
+                        await turnContext.sendActivity({ attachments: [signinCardAttachment] });
                         return;
                     default:
                         await turnContext.sendActivity(`Hello`);
@@ -48,11 +57,7 @@ export class SimpleBot {
                             done(null, token); // First parameter takes an error if you can't get an access token.
                         }
                     });
-                    let result = await graphClient
-                        .api('/me')
-                        .get().then((res) => {
-                            return res;
-                        });
+                    let result = await graphClient.api('/me').get();
                     await turnContext.sendActivity(`Result: ${JSON.stringify(result)}`);
                 }
                 break;
