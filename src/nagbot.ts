@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { ActivityTypes, RecognizerResult, TurnContext, CardFactory, BrowserLocalStorage, ConversationReference, BotFrameworkAdapter } from 'botbuilder';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
+import { ActivityTypes, BotFrameworkAdapter, CardFactory, ConversationReference, TurnContext } from 'botbuilder';
+import { randomBytes } from 'crypto';
 
 
 /**
@@ -25,6 +26,12 @@ class ConversationState {
     expiresOn?: Date;
 }
 
+
+export function generateSecretKey(): string {
+    let buf = randomBytes(48);
+    return buf.toString('hex');
+}
+
 export class NagBot {
 
     public mapOfUserConversationKeytoConversation = new Map<string, ConversationState>();  // only one of these per magic connection.  Ephemeral
@@ -36,7 +43,6 @@ export class NagBot {
      * response, with no stateful conversation.
      * @param turnContext A TurnContext instance, containing all the data needed for processing the conversation turn.
      */
-
 
     async processProactiveActivity(userOid: string, logic: (TurnContext) => Promise<any>) {
         let conversation = this.mapOfUserOidToConversations.get(userOid)[0]; //!TO DO more than one.
@@ -81,7 +87,7 @@ export class NagBot {
                         return;
                     case 'signin':
                         await turnContext.sendActivity('Sending an signinCard');
-                        let userConversationKey = 'xyzzy'; // should be randomly generated
+                        let userConversationKey = generateSecretKey();
                         this.mapOfUserConversationKeytoConversation.set(userConversationKey, {
                             reference: TurnContext.getConversationReference(turnContext.activity),
                             adapter: adapter,

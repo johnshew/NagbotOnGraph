@@ -30,13 +30,9 @@ function parseJwt (token) {
     return JSON.parse(Buffer.from(base64,'base64').toString());
 };
 
-export async function generateSecretKey(): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-        randomBytes(48, (err, buf) => {
-            if (err) return reject('Could not generate secret');
-            return resolve(buf.toString('hex'));
-        });
-    });
+export function generateSecretKey(): string {
+        let buf = randomBytes(48);
+        return buf.toString('hex');
 }
 
 export class AuthManager extends EventEmitter {

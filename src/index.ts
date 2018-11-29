@@ -91,8 +91,9 @@ httpServer.get('/auth', async (req, res, next) => {
             let userAuthSecret = await authManager.getUserAuthSecretFromCode(code);
             let jwt = authManager.getJwtFromUserAuthSecret(userAuthSecret);
             res.header('Set-Cookie', 'userId=' + userAuthSecret + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
-            
-            let state = JSON.parse(req.query['state'] ? decodeURI(req.query['state']) : '');
+            let stateString : string = req.query.state;
+            let state : any = {}
+            try { state = JSON.parse(stateString); } catch (e) {}
             if (!state.url) state.url = '/';
             if (state.key) {
                 // should send verification code to user via web and wait for it on the bot.
