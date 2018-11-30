@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
-import { ActivityTypes, BotFrameworkAdapter, CardFactory, ConversationReference, TurnContext } from 'botbuilder';
+import { ActivityTypes, BotFrameworkAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
 
 
@@ -15,7 +15,8 @@ async function sleep(milliseconds) {
     return new Promise<void>(resolve => setTimeout(resolve, milliseconds));
 }
 
-class ConversationState {
+
+class ConversationTracker {
     adapter?: BotFrameworkAdapter;
     reference?: Partial<ConversationReference>;
     userConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
@@ -26,16 +27,28 @@ class ConversationState {
     expiresOn?: Date;
 }
 
+class UserTracker {
+    userOid? : string;
+}
 
-export function generateSecretKey(): string {
-    let buf = randomBytes(48);
+export function generateSecretKey(length : number= 48): string {
+    let buf = randomBytes(length);
     return buf.toString('hex');
 }
 
 export class NagBot {
 
-    public mapOfUserConversationKeytoConversation = new Map<string, ConversationState>();  // only one of these per magic connection.  Ephemeral
-    public mapOfUserOidToConversations = new Map<string, [ConversationState]>(); // known converationsWithAUser
+
+    constructor (private conversationState : ConversationState,  private userState : UserState) {
+        // Create the state property accessors for the conversation data and user profile.
+        this.conversationAccessor = this.conversationState.createProperty<ConversationTracker>('conversationData');
+        this.userAccessor = this.userState.createProperty<UserTracker>('userData');
+    }
+
+    private conversationAccessor : StatePropertyAccessor<ConversationTracker>;
+    private userAccessor : StatePropertyAccessor<UserTracker>;
+    private mapOfUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
+    private mapOfUserOidToConversations = new Map<string, [ConversationTracker]>(); // known converationsWithAUser
 
     /**
      * Every conversation turn calls this method.
@@ -45,7 +58,7 @@ export class NagBot {
      */
 
     async processProactiveActivity(userOid: string, logic: (TurnContext) => Promise<any>) {
-        let conversation = this.mapOfUserOidToConversations.get(userOid)[0]; //!TO DO more than one.
+        let conversation = this.mapOfUserOidToConversations.get(userOid)[0]; //!TO DO more than one.  Use the first.
         if (conversation.adapter && conversation.reference) {
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 return await logic(turnContext);
@@ -62,6 +75,14 @@ export class NagBot {
             delete conversation.userConversationKey, conversation.verificationKey;
             this.mapOfUserConversationKeytoConversation.delete(userConversationKey);  // no loger used
             this.mapOfUserOidToConversations.set(userOid, [conversation]); // probably should check for duplication
+            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
+                let userData = await this.userAccessor.get(turnContext, {});
+                userData.userOid = conversation.userOid;
+                await this.userAccessor.set(turnContext, userData);
+                await this.conversationAccessor.set(turnContext, conversation);
+                await this.userState.saveChanges(turnContext);
+                await this.conversationState.saveChanges(turnContext);
+            });
             return true;
         }
         return false;
@@ -74,26 +95,30 @@ export class NagBot {
 
     async onTurn(turnContext: TurnContext, adapter: BotFrameworkAdapter) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
+        
         console.log(`onTurn: ${JSON.stringify(turnContext)}`);
+        const user = await this.userAccessor.get(turnContext, {});
+        const conversation = await this.conversationAccessor.get(turnContext, { verified: false });
         const activity = turnContext.activity;
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {
                     case 'login':
-                        await turnContext.sendActivity('Sending an oauthCard');
                         let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
                         console.log(`Attachment: ${JSON.stringify(oauthCardAttachment)}`);
                         await turnContext.sendActivity({ attachments: [oauthCardAttachment] });
                         return;
                     case 'signin':
-                        await turnContext.sendActivity('Sending an signinCard');
-                        let userConversationKey = generateSecretKey();
-                        this.mapOfUserConversationKeytoConversation.set(userConversationKey, {
+                        let userConversationKey = generateSecretKey(8);
+                        let conversation = { 
                             reference: TurnContext.getConversationReference(turnContext.activity),
                             adapter: adapter,
                             verified: false,
                             userConversationKey: userConversationKey,
-                        });
+                        };
+                        this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
+                        await this.conversationAccessor.set(turnContext,conversation);
+                        await this.conversationState.saveChanges(turnContext);
                         let signinCardAttachment = CardFactory.signinCard('title', `http://localhost:8080/bot-login?conversationKey=${userConversationKey}`, 'text on the card');
                         console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
                         await turnContext.sendActivity({ attachments: [signinCardAttachment] });

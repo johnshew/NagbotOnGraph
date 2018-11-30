@@ -1,5 +1,5 @@
 
-import { BotFrameworkAdapter } from 'botbuilder';
+import { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState} from 'botbuilder';
 import * as dotenv from "dotenv";
 import * as path from 'path';
 import * as restify from 'restify';
@@ -30,9 +30,13 @@ adapter.onTurnError = async (turnContext, error) => {
     await turnContext.sendActivity(`Oops. Something went wrong!`);
 };
 
+const memoryStorage = new MemoryStorage();
+const conversationState = new ConversationState(memoryStorage);
+const userState = new UserState(memoryStorage);
+
 let bot: NagBot;
 try {
-    bot = new NagBot();
+    bot = new NagBot(conversationState, userState);
 } catch (err) {
     console.error(`[botInitializationError]: ${err}`);
     process.exit();
