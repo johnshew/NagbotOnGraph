@@ -4,6 +4,7 @@
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { ActivityTypes, BotFrameworkAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
+import { stringify } from 'querystring';
 
 
 /**
@@ -17,13 +18,13 @@ async function sleep(milliseconds) {
 
 
 class ConversationTracker {
-    adapter?: BotFrameworkAdapter;
-    reference?: Partial<ConversationReference>;
+    adapter: BotFrameworkAdapter;
+    reference: Partial<ConversationReference>;
     userConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
     verified?: boolean;
-    verificationKey?: string // locally generated and ephemeral
+    verificationKey?: string // locally generated and ephemeral - not used yet
     userOid?: string // from Oauth - uniquely identifies this user - and is used to find conversations.
-    userAuthKey?: string;  // secret key that can be shared with client over a secure channel
+    userAuthKey?: string;  // authManger secret key ( can be shared with client over a secure channel )
     expiresOn?: Date;
 }
 
@@ -48,7 +49,7 @@ export class NagBot {
     private conversationAccessor : StatePropertyAccessor<ConversationTracker>;
     private userAccessor : StatePropertyAccessor<UserTracker>;
     private mapOfUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
-    private mapOfUserOidToConversations = new Map<string, [ConversationTracker]>(); // known converationsWithAUser
+    private mapOfUserOidToConversations = new Map<string, Set<ConversationTracker>>(); // known converationsWithAUser
 
     /**
      * Every conversation turn calls this method.
@@ -58,7 +59,7 @@ export class NagBot {
      */
 
     async processProactiveActivity(userOid: string, logic: (TurnContext) => Promise<any>) {
-        let conversation = this.mapOfUserOidToConversations.get(userOid)[0]; //!TO DO more than one.  Use the first.
+        let conversation = this.mapOfUserOidToConversations.get(userOid).values().next().value;
         if (conversation.adapter && conversation.reference) {
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 return await logic(turnContext);
@@ -67,14 +68,25 @@ export class NagBot {
         else return Promise.reject("Couldn't continue converation");
     }
 
+    associateConversationWithOid(oid : string, conversation : ConversationTracker) {
+        let conversations = this.mapOfUserOidToConversations.get(oid);
+        if (!conversations) { conversations = new Set<ConversationTracker>(); }
+        conversations.add(conversation);
+        this.mapOfUserOidToConversations.set(oid, conversations);
+    }
+
+    findConversations(oid: string) : [ConversationTracker] {
+        return null;
+    }
+
     async conversationVerified(userConversationKey: string, userOid: string) {
         let conversation = this.mapOfUserConversationKeytoConversation.get(userConversationKey);
         if (conversation) {
             conversation.userOid =userOid;
             conversation.verified = true;
             delete conversation.userConversationKey, conversation.verificationKey;
-            this.mapOfUserConversationKeytoConversation.delete(userConversationKey);  // no loger used
-            this.mapOfUserOidToConversations.set(userOid, [conversation]); // probably should check for duplication
+            this.mapOfUserConversationKeytoConversation.delete(userConversationKey);  // no longer used
+            this.associateConversationWithOid(userOid, conversation);
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 let userData = await this.userAccessor.get(turnContext, {});
                 userData.userOid = conversation.userOid;
@@ -87,6 +99,7 @@ export class NagBot {
         }
         return false;
     }
+
     async setBotAuthId(userConversationKey: string, authId: string) {
         let conversation = this.mapOfUserConversationKeytoConversation.get(userConversationKey);
         conversation.userAuthKey = authId;
@@ -97,8 +110,8 @@ export class NagBot {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
         
         console.log(`onTurn: ${JSON.stringify(turnContext)}`);
-        const user = await this.userAccessor.get(turnContext, {});
-        const conversation = await this.conversationAccessor.get(turnContext, { verified: false });
+        let user = await this.userAccessor.get(turnContext, {});
+        let conversation = await this.conversationAccessor.get(turnContext);
         const activity = turnContext.activity;
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
@@ -109,8 +122,12 @@ export class NagBot {
                         await turnContext.sendActivity({ attachments: [oauthCardAttachment] });
                         return;
                     case 'signin':
+                        if (conversation && conversation.userOid && conversation.userAuthKey) {
+                            await turnContext.sendActivity('You are already signed in');
+                            return;
+                        }
                         let userConversationKey = generateSecretKey(8);
-                        let conversation = { 
+                        conversation =  { ... (conversation) ? conversation : {},  
                             reference: TurnContext.getConversationReference(turnContext.activity),
                             adapter: adapter,
                             verified: false,
