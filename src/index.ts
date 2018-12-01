@@ -224,9 +224,9 @@ httpServer.get('/notify', async (req, res, next) => {
     try {
         let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
         let conversations = bot.findAllConversations(jwt.oid);
-        conversations.forEach(c => {
-            bot.processActivityInConversation(c, async turnContext => {
-                turnContext.sendActivity('Notification');
+        conversations.forEach(async c => {
+            await bot.processActivityInConversation(c, async turnContext => {
+                await turnContext.sendActivity('Notification');
             });
         });
         res.header('Content-Type', 'text/html');
