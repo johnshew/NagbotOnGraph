@@ -30,8 +30,8 @@ function parseJwt (token) {
     return JSON.parse(Buffer.from(base64,'base64').toString());
 };
 
-export function generateSecretKey(): string {
-        let buf = randomBytes(48);
+export function generateSecretKey(length : number = 16): string {
+        let buf = randomBytes(length);
         return buf.toString('hex');
 }
 
@@ -41,19 +41,37 @@ export class AuthManager extends EventEmitter {
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) { super(); }
 
-    getTokensFromUserAuthSecret(authSecret: string): AuthTokens | null {
-        let tokens = this._tokensMap.get(authSecret);
-        if (!tokens) return null;
-        return tokens;
-    }
-
-    getJwtFromUserAuthSecret(authSecret: string)  {
-        let tokens = this._tokensMap.get(authSecret);
+    jwtForUserAuthKey(authKey: string)  {
+        let tokens = this._tokensMap.get(authKey);
         if (!tokens) return null;
         return <JWT>parseJwt(tokens.id_token);
     }
 
-    setTokensForUserAuthSecret(authSecret: string, value: AuthTokens) {
+    async accessTokenForAuthKey(authKey: string, resource?: string): Promise<string> {
+        return new Promise<string>(async (resolve, reject) => {
+            try {
+                let tokens = this._tokensMap.get(authKey);
+                if (!tokens) { return reject('No tokens for user. Not logged in.'); }
+                if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return resolve(tokens.access_token); }
+                if (tokens.refresh_token) {
+                    let tokens = await this.refreshTokens(authKey);
+                    return resolve(tokens.access_token);
+                }
+                return reject('Unable to refresh to get an access token.');
+            }
+            catch (err) { return reject('Could not get access token.  Reason: ' + err) }
+        })
+    }
+
+    
+    private getTokensForUserAuthKey(authKey: string): AuthTokens | null {
+        let tokens = this._tokensMap.get(authKey);
+        if (!tokens) return null;
+        return tokens;
+    }
+
+
+    private setTokensForUserAuthKey(authSecret: string, value: AuthTokens) {
         if (authSecret !== value.auth_secret) throw new Error('UserAuthSecret does not match');
         if (isDeepStrictEqual(this._tokensMap.get(authSecret), value)) {
             return
@@ -71,26 +89,9 @@ export class AuthManager extends EventEmitter {
         this.scopes.concat(scopes);
     }
 
-    async getAccessToken(authSecret: string, resource?: string): Promise<string> {
-        return new Promise<string>(async (resolve, reject) => {
-            try {
-                let tokens = this._tokensMap.get(authSecret);
-                if (!tokens) { return reject('No tokens for user. Not logged in.'); }
-                if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return resolve(tokens.access_token); }
-                if (tokens.refresh_token) {
-                    let tokens = await this.refreshTokens(authSecret);
-                    return resolve(tokens.access_token);
-                }
-                return reject('Unable to refresh to get an access token.');
-            }
-            catch (err) { return reject('Could not get access token.  Reason: ' + err) }
-        })
-    }
-
-
 
     // gets tokens from authorization code
-    async getUserAuthSecretFromCode(code: string): Promise<string> {
+    async userAuthKeyFromCode(code: string): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
                 var body = `client_id=${this.appId}`;
@@ -114,7 +115,7 @@ export class AuthManager extends EventEmitter {
                 }
                 data['auth_secret'] = await generateSecretKey();
                 let tokens = new AuthTokens(data);
-                this.setTokensForUserAuthSecret(tokens.auth_secret, tokens);
+                this.setTokensForUserAuthKey(tokens.auth_secret, tokens);
                 return resolve(tokens.auth_secret);
             }
             catch (err) { return reject(err); }
@@ -123,10 +124,10 @@ export class AuthManager extends EventEmitter {
 
 
     // updates access token using refresh token
-    async refreshTokens(authSecret: string): Promise<AuthTokens> {
+    private async refreshTokens(authSecret: string): Promise<AuthTokens> {
         return new Promise<AuthTokens>(async (resolve, reject) => {
             try {
-                let tokens = this.getTokensFromUserAuthSecret(authSecret);
+                let tokens = this.getTokensForUserAuthKey(authSecret);
                 if (!tokens) return reject('No token for that authSecret.');
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
@@ -149,7 +150,7 @@ export class AuthManager extends EventEmitter {
                 }
                 data['auth_secret'] = tokens.auth_secret;
                 let refreshedTokens = new AuthTokens(data);
-                this.setTokensForUserAuthSecret(refreshedTokens.auth_secret, refreshedTokens);
+                this.setTokensForUserAuthKey(refreshedTokens.auth_secret, refreshedTokens);
                 return resolve(refreshedTokens);
             }
             catch (err) { return reject(err); }

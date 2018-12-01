@@ -92,8 +92,8 @@ httpServer.get('/auth', async (req, res, next) => {
         // look for authorization code coming in (indicates redirect from interative login/consent)
         var code = req.query['code'];
         if (code) {
-            let userAuthSecret = await authManager.getUserAuthSecretFromCode(code);
-            let jwt = authManager.getJwtFromUserAuthSecret(userAuthSecret);
+            let userAuthSecret = await authManager.userAuthKeyFromCode(code);
+            let jwt = authManager.jwtForUserAuthKey(userAuthSecret);
             res.header('Set-Cookie', 'userId=' + userAuthSecret + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
             let stateString: string = req.query.state;
             let state: any = {}
@@ -124,7 +124,7 @@ httpServer.get('/auth', async (req, res, next) => {
 httpServer.get('/mail', async (req, res, next) => {
     let errorMessage: string | null = null;
     try {
-        let accessToken = await authManager.getAccessToken(getCookie(req, 'userId'));
+        let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         let data = await graphHelper.get(accessToken, 'https://graph.microsoft.com/v1.0/me/messages');
         if (data) {
             res.header('Content-Type', 'text/html');
@@ -145,7 +145,7 @@ httpServer.get('/mail', async (req, res, next) => {
 httpServer.get('/tasks', async (req, res, next) => {
     let errorMessage: string | null = null;
     try {
-        let accessToken = await authManager.getAccessToken(getCookie(req, 'userId'));
+        let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         let data = await graphHelper.get(accessToken, 'https://graph.microsoft.com/beta/me/outlook/tasks');
         if (data && data.value) {
             res.header('Content-Type', 'text/html');
@@ -166,7 +166,7 @@ httpServer.get('/tasks', async (req, res, next) => {
 httpServer.get('/profile', async (req, res, next) => {
     let errorMessage: string | null = null;
     try {
-        let accessToken = await authManager.getAccessToken(getCookie(req, 'userId'));
+        let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         let data = await graphHelper.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
         if (data) {
             res.header('Content-Type', 'text/html');
@@ -190,7 +190,7 @@ httpServer.get('/update', async (req, res, next) => {
     let responseCode: number | null = null;
     let body: MicrosoftGraph.OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
     try {
-        let accessToken = await authManager.getAccessToken(getCookie(req, 'userId'));
+        let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         await graphHelper.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
     }
     catch (err) {
@@ -200,7 +200,7 @@ httpServer.get('/update', async (req, res, next) => {
 
     if (responseCode == 404) try {
         responseCode = null;
-        let accessToken = await authManager.getAccessToken(getCookie(req, 'userId'));
+        let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         body.extensionName = 'net.shew.nagger';
         body.id = 'net.shew.nagger'
         let location = await graphHelper.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', body);
@@ -222,7 +222,7 @@ httpServer.get('/update', async (req, res, next) => {
 httpServer.get('/notify', async (req, res, next) => {
     let errorMessage: string | null = null;
     try {
-        let jwt = await authManager.getJwtFromUserAuthSecret(getCookie(req, 'userId'));
+        let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
         let conversations = bot.findAllConversations(jwt.oid);
         conversations.forEach(c => {
             bot.processActivityInConversation(c, async turnContext => {
