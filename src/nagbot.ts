@@ -63,7 +63,7 @@ export class NagBot {
      * @param turnContext A TurnContext instance, containing all the data needed for processing the conversation turn.
      */
 
-    async processActivityForUserOnce(userOid: string, logic: (TurnContext) => Promise<any>) {
+    private async processActivityForUserOnce(userOid: string, logic: (TurnContext) => Promise<any>) {
         let conversations = this.mapOfUserOidToConversations.get(userOid);
         let conversation = (conversations && conversations.size > 0) ? conversations.values().next().value : undefined;
         if (conversation.adapter && conversation.reference) {
@@ -74,7 +74,7 @@ export class NagBot {
         else return Promise.reject("Couldn't continue converation");
     }
 
-    async processActivityForUser(userOid: string, logic: (TurnContext) => Promise<any>) {
+    private async processActivityForUser(userOid: string, logic: (TurnContext) => Promise<any>) {
         let updates = null;
         try {
             updates = this.findAllConversations(userOid).map(async c => {
@@ -91,6 +91,13 @@ export class NagBot {
         return await Promise.all(updates);
     }
 
+    async processActivityInConversation(conversation: ConversationTracker, logic: (TurnContext) => Promise<any>) {
+        await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
+            return logic(turnContext); // not awaiting yet
+        })
+        .catch(err => { throw err; });
+    }
+
 
     private addConversationToOidSet(oid: string, conversation: ConversationTracker) {
         // force conversation to contain the oid.
@@ -101,7 +108,7 @@ export class NagBot {
         this.mapOfUserOidToConversations.set(oid, conversations);
     }
 
-    private findAllConversations(oid: string): ConversationTracker[] {
+    findAllConversations(oid: string): ConversationTracker[] {
         return Array.from(this.mapOfUserOidToConversations.get(oid));
     }
 
@@ -118,7 +125,7 @@ export class NagBot {
         });
     }
 
-    async finishUserConversationKeyToOidAssociation(userConversationKey: string, userOid: string, userAuthManagerKey: string) {
+    async finishUserConversationKeyToOidAssociation(userConversationKey: string, userOid: string, userAuthManagerKey: string): Promise<ConversationTracker | undefined> {
         let conversation = this.mapOfUserConversationKeytoConversation.get(userConversationKey);
         if (conversation) {
             // Remove ephemeral UserConversationKey to conversation from Map.
@@ -142,9 +149,9 @@ export class NagBot {
                 await this.userAccessor.set(turnContext, userData);
                 await this.userState.saveChanges(turnContext);
             });
-            return true;
+            return conversation;
         }
-        return false;
+        return undefined;
     }
 
     private async setBotAuthId(oid: string, authId: string) {
@@ -156,11 +163,11 @@ export class NagBot {
         return Promise.all(updates);
     }
 
-    async prepConversationForLogin(conversation : ConversationTracker) {
+    private async prepConversationForLogin(conversation: ConversationTracker) {
         if (conversation && conversation.userOid && conversation.userAuthKey) throw 'bad convesation in login prep';
         let userConversationKey = generateSecretKey(8);
         conversation.userConversationKey = userConversationKey,
-        this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
+            this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
     }
 
     async onTurn(turnContext: TurnContext, adapter: BotFrameworkAdapter) {
@@ -170,8 +177,8 @@ export class NagBot {
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext);
-        if (!conversation) { conversation = { adapter : adapter, reference : TurnContext.getConversationReference(turnContext.activity) } }
-        
+        if (!conversation) { conversation = { adapter: adapter, reference: TurnContext.getConversationReference(turnContext.activity) } }
+
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {

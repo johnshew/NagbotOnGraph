@@ -1,5 +1,5 @@
 
-import { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState} from 'botbuilder';
+import { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } from 'botbuilder';
 import * as dotenv from "dotenv";
 import * as path from 'path';
 import * as restify from 'restify';
@@ -9,7 +9,7 @@ import { AuthManager } from './simpleAuth';
 import * as MicrosoftGraph from "@microsoft/microsoft-graph-types"
 
 const ENV_FILE = path.join(__dirname, '../.env');
-dotenv.config({path: ENV_FILE});
+dotenv.config({ path: ENV_FILE });
 var botId = process.env.botAppId;
 var botPassword = process.env.botAppPassword;
 if (!botId || !botPassword) { throw new Error('No app credentials.'); process.exit(); }
@@ -22,7 +22,7 @@ let graphHelper = new GraphHelper();
 authManager.on('refreshed', () => console.log('refreshed'))
 
 
-const adapter = new BotFrameworkAdapter({ appId: botId, appPassword: botPassword});
+const adapter = new BotFrameworkAdapter({ appId: botId, appPassword: botPassword });
 
 // Catch-all for errors.
 adapter.onTurnError = async (turnContext, error) => {
@@ -81,7 +81,7 @@ httpServer.get('/login', (req, res, next) => {
 httpServer.get('/bot-login', (req, res, next) => {
     let conversationKey = req.query['conversationKey'] || '';
     let location = req.query['redirectUrl'];
-    let authUrl = authManager.authUrl(JSON.stringify({ key: conversationKey, url: location}));
+    let authUrl = authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
     console.log(`redirecting to ${authUrl}`);
     res.redirect(authUrl, next);
 });
@@ -95,15 +95,15 @@ httpServer.get('/auth', async (req, res, next) => {
             let userAuthSecret = await authManager.getUserAuthSecretFromCode(code);
             let jwt = authManager.getJwtFromUserAuthSecret(userAuthSecret);
             res.header('Set-Cookie', 'userId=' + userAuthSecret + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
-            let stateString : string = req.query.state;
-            let state : any = {}
-            try { state = JSON.parse(stateString); } catch (e) {}
+            let stateString: string = req.query.state;
+            let state: any = {}
+            try { state = JSON.parse(stateString); } catch (e) { }
             if (!state.url) state.url = '/';
             if (state.key) {
                 // should send verification code to user via web and wait for it on the bot.
                 // ignore for now.
-                await bot.finishUserConversationKeyToOidAssociation(state.key, jwt.oid, userAuthSecret);
-                await bot.processActivityForUser(jwt.oid, async (turnContext) => {
+                let conversation = await bot.finishUserConversationKeyToOidAssociation(state.key, jwt.oid, userAuthSecret);
+                await bot.processActivityInConversation(conversation, async (turnContext) => {
                     return await turnContext.sendActivity('Got your web connections.');
                 });
             }
@@ -219,20 +219,39 @@ httpServer.get('/update', async (req, res, next) => {
     }
 });
 
+httpServer.get('/notify', async (req, res, next) => {
+    let errorMessage: string | null = null;
+    try {
+        let jwt = await authManager.getJwtFromUserAuthSecret(getCookie(req, 'userId'));
+        let conversations = bot.findAllConversations(jwt.oid);
+        conversations.forEach(c => {
+            bot.processActivityInConversation(c, async turnContext => {
+                turnContext.sendActivity('Notification');
+            });
+        });
+        res.header('Content-Type', 'text/html');
+        res.end(`<html><head></head><body><p>User updated</p><a href="/">Continue</a></body></html>`);
+        return next();
+    }
+    catch (err) { }
+    res.setHeader('Content-Type', 'text/html');
+    res.end(`<html><head></head><body>${errorMessage || "Not authorized."}<br/><a href="/">Continue</a></body></html>`);
+    return next();
+});
 
 httpServer.listen(process.env.port || process.env.PORT || 8080, () => {
     console.log(`\n${httpServer.name} listening to ${httpServer.url}`);
 });
 
 function getCookie(req: restify.Request, key: string): string {
-var list = {};
-var rc = req.header('cookie');
+    var list = {};
+    var rc = req.header('cookie');
 
-rc && rc.split(';').forEach(cookie => {
-    var parts = cookie.split('=');
-    var name = parts.shift();
-    if (name) list[name] = decodeURI(parts.join('='));
-})
+    rc && rc.split(';').forEach(cookie => {
+        var parts = cookie.split('=');
+        var name = parts.shift();
+        if (name) list[name] = decodeURI(parts.join('='));
+    })
 
-return (key && key in list) ? list[key] : null;
+    return (key && key in list) ? list[key] : null;
 }
