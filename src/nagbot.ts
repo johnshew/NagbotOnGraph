@@ -5,6 +5,7 @@ import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { ActivityTypes, BotFrameworkAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
 import { stringify } from 'querystring';
+import { isPrimitive } from 'util';
 
 
 /**
@@ -29,10 +30,10 @@ class ConversationTracker {
 }
 
 class UserTracker {
-    userOid? : string;
+    userOid?: string;
 }
 
-export function generateSecretKey(length : number= 48): string {
+export function generateSecretKey(length: number = 48): string {
     let buf = randomBytes(length);
     return buf.toString('hex');
 }
@@ -40,16 +41,20 @@ export function generateSecretKey(length : number= 48): string {
 export class NagBot {
 
 
-    constructor (private conversationState : ConversationState,  private userState : UserState) {
+    constructor(private conversationState: ConversationState, private userState: UserState) {
         // Create the state property accessors for the conversation data and user profile.
         this.conversationAccessor = this.conversationState.createProperty<ConversationTracker>('conversationData');
         this.userAccessor = this.userState.createProperty<UserTracker>('userData');
     }
 
-    private conversationAccessor : StatePropertyAccessor<ConversationTracker>;
-    private userAccessor : StatePropertyAccessor<UserTracker>;
+    private conversationAccessor: StatePropertyAccessor<ConversationTracker>;
+    private userAccessor: StatePropertyAccessor<UserTracker>;
+    // The following two maps duplicate bot state in memory - current bot state primitives don't enable iteration to find the data.  
+    // Instead of duplicating the entire tracker we could store a key to adapter/conversationReference that would enable the creation of turnContext which could then be used get/set the data.
+    // Perhaps a better alternative is to add this key mapping is a key mapping wrapper around any given storage object includes storing the mapping.
+    // Keeping it simple for now and just duplicating.
     private mapOfUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
-    private mapOfUserOidToConversations = new Map<string, Set<ConversationTracker>>(); // known converationsWithAUser
+    private mapOfUserOidToConversations = new Map<string, Set<ConversationTracker>>(); // all known conversations associated with a user as identified by their Auth2 oid.
 
     /**
      * Every conversation turn calls this method.
@@ -58,8 +63,9 @@ export class NagBot {
      * @param turnContext A TurnContext instance, containing all the data needed for processing the conversation turn.
      */
 
-    async processProactiveActivity(userOid: string, logic: (TurnContext) => Promise<any>) {
-        let conversation = this.mapOfUserOidToConversations.get(userOid).values().next().value;
+    async processActivityForUserOnce(userOid: string, logic: (TurnContext) => Promise<any>) {
+        let conversations = this.mapOfUserOidToConversations.get(userOid);
+        let conversation = (conversations && conversations.size > 0) ? conversations.values().next().value : undefined;
         if (conversation.adapter && conversation.reference) {
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 return await logic(turnContext);
@@ -68,51 +74,104 @@ export class NagBot {
         else return Promise.reject("Couldn't continue converation");
     }
 
-    associateConversationWithOid(oid : string, conversation : ConversationTracker) {
+    async processActivityForUser(userOid: string, logic: (TurnContext) => Promise<any>) {
+        let updates = null;
+        try {
+            updates = this.findAllConversations(userOid).map(async c => {
+                if (c.adapter && c.reference) {
+                    await c.adapter.continueConversation(c.reference, async (turnContext) => {
+                        return logic(turnContext); // not awaiting yet
+                    });
+                }
+            });
+        }
+        catch (err) {
+            throw 'Unable to processAcvitityForUser' + err;
+        }
+        return await Promise.all(updates);
+    }
+
+
+    private addConversationToOidSet(oid: string, conversation: ConversationTracker) {
+        // force conversation to contain the oid.
+        conversation.userOid = oid;
         let conversations = this.mapOfUserOidToConversations.get(oid);
         if (!conversations) { conversations = new Set<ConversationTracker>(); }
         conversations.add(conversation);
         this.mapOfUserOidToConversations.set(oid, conversations);
     }
 
-    findConversations(oid: string) : [ConversationTracker] {
-        return null;
+    private findAllConversations(oid: string): ConversationTracker[] {
+        return Array.from(this.mapOfUserOidToConversations.get(oid));
     }
 
-    async conversationVerified(userConversationKey: string, userOid: string) {
+    async storeConversation(conversation: ConversationTracker) {
+        return new Promise<void>(async (resolve, reject) => {
+            try {
+                await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
+                    await this.conversationAccessor.set(turnContext, conversation);
+                    return resolve(await this.conversationState.saveChanges(turnContext));  // not awaiting since outer function can await.
+                });
+            } catch (err) {
+                reject("Couldn't write state for converation");
+            }
+        });
+    }
+
+    async finishUserConversationKeyToOidAssociation(userConversationKey: string, userOid: string, userAuthManagerKey: string) {
         let conversation = this.mapOfUserConversationKeytoConversation.get(userConversationKey);
         if (conversation) {
-            conversation.userOid =userOid;
-            conversation.verified = true;
-            delete conversation.userConversationKey, conversation.verificationKey;
+            // Remove ephemeral UserConversationKey to conversation from Map.
             this.mapOfUserConversationKeytoConversation.delete(userConversationKey);  // no longer used
-            this.associateConversationWithOid(userOid, conversation);
+
+            // Update conversation state
+            delete conversation.userConversationKey;
+            conversation.userOid = userOid;
+            conversation.userAuthKey = userAuthManagerKey;
+            // !To Do - where to handle verification
+
+            // Store the conversation in the Oid Set.
+            this.addConversationToOidSet(userOid, conversation);
+
+            await this.storeConversation(conversation);
+
+            // Store the updated user
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 let userData = await this.userAccessor.get(turnContext, {});
                 userData.userOid = conversation.userOid;
                 await this.userAccessor.set(turnContext, userData);
-                await this.conversationAccessor.set(turnContext, conversation);
                 await this.userState.saveChanges(turnContext);
-                await this.conversationState.saveChanges(turnContext);
             });
             return true;
         }
         return false;
     }
 
-    async setBotAuthId(userConversationKey: string, authId: string) {
-        let conversation = this.mapOfUserConversationKeytoConversation.get(userConversationKey);
-        conversation.userAuthKey = authId;
-        this.mapOfUserConversationKeytoConversation.set(userConversationKey, conversation);
+    private async setBotAuthId(oid: string, authId: string) {
+        let conversations = this.findAllConversations(oid);
+        let updates = conversations.map(c => {
+            c.userOid = oid;
+            return this.storeConversation(c);
+        });
+        return Promise.all(updates);
+    }
+
+    async prepConversationForLogin(conversation : ConversationTracker) {
+        if (conversation && conversation.userOid && conversation.userAuthKey) throw 'bad convesation in login prep';
+        let userConversationKey = generateSecretKey(8);
+        conversation.userConversationKey = userConversationKey,
+        this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
     }
 
     async onTurn(turnContext: TurnContext, adapter: BotFrameworkAdapter) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
-        
+
         console.log(`onTurn: ${JSON.stringify(turnContext)}`);
+        const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext);
-        const activity = turnContext.activity;
+        if (!conversation) { conversation = { adapter : adapter, reference : TurnContext.getConversationReference(turnContext.activity) } }
+        
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {
@@ -126,17 +185,9 @@ export class NagBot {
                             await turnContext.sendActivity('You are already signed in');
                             return;
                         }
-                        let userConversationKey = generateSecretKey(8);
-                        conversation =  { ... (conversation) ? conversation : {},  
-                            reference: TurnContext.getConversationReference(turnContext.activity),
-                            adapter: adapter,
-                            verified: false,
-                            userConversationKey: userConversationKey,
-                        };
-                        this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
-                        await this.conversationAccessor.set(turnContext,conversation);
-                        await this.conversationState.saveChanges(turnContext);
-                        let signinCardAttachment = CardFactory.signinCard('title', `http://localhost:8080/bot-login?conversationKey=${userConversationKey}`, 'text on the card');
+                        await this.prepConversationForLogin(conversation);
+                        await this.storeConversation(conversation);
+                        let signinCardAttachment = CardFactory.signinCard('title', `http://localhost:8080/bot-login?conversationKey=${conversation.userConversationKey}`, 'text on the card');
                         console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
                         await turnContext.sendActivity({ attachments: [signinCardAttachment] });
                         return;

@@ -102,8 +102,8 @@ httpServer.get('/auth', async (req, res, next) => {
             if (state.key) {
                 // should send verification code to user via web and wait for it on the bot.
                 // ignore for now.
-                bot.conversationVerified(state.key, jwt.oid);
-                await bot.processProactiveActivity(jwt.oid, async (turnContext) => {
+                await bot.finishUserConversationKeyToOidAssociation(state.key, jwt.oid, userAuthSecret);
+                await bot.processActivityForUser(jwt.oid, async (turnContext) => {
                     return await turnContext.sendActivity('Got your web connections.');
                 });
             }
