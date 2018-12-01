@@ -24,73 +24,20 @@ class JWT {
     oid?: string
 }
 
-function parseJwt (token) {
-    var base64Url = token.split('.')[1];
-    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(base64,'base64').toString());
-};
-
-export function generateSecretKey(length : number = 16): string {
-        let buf = randomBytes(length);
-        return buf.toString('hex');
-}
-
 export class AuthManager extends EventEmitter {
 
     private _tokensMap = new Map<string, AuthTokens>(); // UserAuthSecret to AuthTokens
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) { super(); }
 
-    jwtForUserAuthKey(authKey: string)  {
-        let tokens = this._tokensMap.get(authKey);
-        if (!tokens) return null;
-        return <JWT>parseJwt(tokens.id_token);
-    }
+    // clients of the authManager interact with it using userAuthKeys.  These contain no PII and can be shared with a client over protected channels.
 
-    async accessTokenForAuthKey(authKey: string, resource?: string): Promise<string> {
-        return new Promise<string>(async (resolve, reject) => {
-            try {
-                let tokens = this._tokensMap.get(authKey);
-                if (!tokens) { return reject('No tokens for user. Not logged in.'); }
-                if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return resolve(tokens.access_token); }
-                if (tokens.refresh_token) {
-                    let tokens = await this.refreshTokens(authKey);
-                    return resolve(tokens.access_token);
-                }
-                return reject('Unable to refresh to get an access token.');
-            }
-            catch (err) { return reject('Could not get access token.  Reason: ' + err) }
-        })
-    }
+    // clients get an authKey by redirecting to the authUrl and then obtaining a userAuthKey from redirect back that includes a 'code' on the query string parameter.
 
-    
-    private getTokensForUserAuthKey(authKey: string): AuthTokens | null {
-        let tokens = this._tokensMap.get(authKey);
-        if (!tokens) return null;
-        return tokens;
-    }
-
-
-    private setTokensForUserAuthKey(authSecret: string, value: AuthTokens) {
-        if (authSecret !== value.auth_secret) throw new Error('UserAuthSecret does not match');
-        if (isDeepStrictEqual(this._tokensMap.get(authSecret), value)) {
-            return
-        }
-        this._tokensMap.set(authSecret, value);
-        this.emit('refreshed');
-    }
-
-    // gets code authorization redirect
-    authUrl(state : string = ''): string {
+    authUrl(state: string = ''): string {
         return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${this.defaultRedirectUri}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
     }
 
-    addScopes(scopes: string[]) {
-        this.scopes.concat(scopes);
-    }
-
-
-    // gets tokens from authorization code
     async userAuthKeyFromCode(code: string): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
@@ -122,6 +69,48 @@ export class AuthManager extends EventEmitter {
         });
     }
 
+    jwtForUserAuthKey(authKey: string) {
+        let tokens = this._tokensMap.get(authKey);
+        if (!tokens) return null;
+        return <JWT>parseJwt(tokens.id_token);
+    }
+
+    async accessTokenForAuthKey(authKey: string, resource?: string) {
+        return new Promise<string>(async (resolve, reject) => {
+            try {
+                let tokens = this._tokensMap.get(authKey);
+                if (!tokens) { return reject('No tokens for user. Not logged in.'); }
+                if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return resolve(tokens.access_token); }
+                if (tokens.refresh_token) {
+                    let tokens = await this.refreshTokens(authKey);
+                    return resolve(tokens.access_token);
+                }
+                return reject('Unable to refresh to get an access token.');
+            }
+            catch (err) { return reject('Could not get access token.  Reason: ' + err) }
+        })
+    }
+
+
+    addScopes(scopes: string[]) {
+        this.scopes.concat(scopes);
+    }
+
+    private getTokensForUserAuthKey(authKey: string): AuthTokens | null {
+        let tokens = this._tokensMap.get(authKey);
+        if (!tokens) return null;
+        return tokens;
+    }
+
+
+    private setTokensForUserAuthKey(authSecret: string, value: AuthTokens) {
+        if (authSecret !== value.auth_secret) throw new Error('UserAuthSecret does not match');
+        if (isDeepStrictEqual(this._tokensMap.get(authSecret), value)) {
+            return
+        }
+        this._tokensMap.set(authSecret, value);
+        this.emit('refreshed');
+    }
 
     // updates access token using refresh token
     private async refreshTokens(authSecret: string): Promise<AuthTokens> {
@@ -163,4 +152,16 @@ export declare interface AuthManager {
     emit(event: 'refreshed'): boolean
     // on(event: string, listener: Function): this;
     // emit(event: string | symbol, ...args : any[]) : boolean;
+}
+
+
+function parseJwt(token) {
+    var base64Url = token.split('.')[1];
+    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(base64, 'base64').toString());
+};
+
+export function generateSecretKey(length: number = 16): string {
+    let buf = randomBytes(length);
+    return buf.toString('hex');
 }

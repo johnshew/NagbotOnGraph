@@ -2,10 +2,9 @@
 // Licensed under the MIT License.
 
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
-import { ActivityTypes, BotFrameworkAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
+import { ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
-import { stringify } from 'querystring';
-import { isPrimitive } from 'util';
+
 
 
 /**
@@ -14,7 +13,7 @@ import { isPrimitive } from 'util';
  */
 
 class ConversationTracker {
-    adapter: BotFrameworkAdapter;
+    adapter: BotAdapter;
     reference: Partial<ConversationReference>;
     userConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
     verified?: boolean;
@@ -27,8 +26,6 @@ class ConversationTracker {
 class UserTracker {
     userOid?: string;
 }
-
-
 
 export class NagBot {
 
@@ -56,9 +53,9 @@ export class NagBot {
      */
 
 
-    async onTurn(turnContext: TurnContext, adapter: BotFrameworkAdapter) {
+    async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
-
+        let adapter = turnContext.adapter;
         console.log(`onTurn: ${JSON.stringify(turnContext)}`);
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
@@ -121,10 +118,14 @@ export class NagBot {
     }
 
     async processActivityInConversation(conversation: ConversationTracker, logic: (TurnContext) => Promise<any>) {
-        await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
-            return await logic(turnContext);
-        })
-        .catch(err => { throw err; });
+        try {
+            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
+                return await logic(turnContext);
+            });
+        } catch (err) {
+            console.log('problem in running activity in conversation.');
+            throw err;
+        }
     }
 
     async storeConversation(conversation: ConversationTracker) {
@@ -184,46 +185,7 @@ export class NagBot {
         conversation.userConversationKey = userConversationKey,
             this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
     }
-    
-    /*
 
-    private async setBotAuthId(oid: string, authId: string) {
-        let conversations = this.findAllConversations(oid);
-        let updates = conversations.map(c => {
-            c.userOid = oid;
-            return this.storeConversation(c);
-        });
-        return Promise.all(updates);
-    }
-
-    private async processActivityForUserOnce(userOid: string, logic: (TurnContext) => Promise<any>) {
-        let conversations = this.mapOfUserOidToConversations.get(userOid);
-        let conversation = (conversations && conversations.size > 0) ? conversations.values().next().value : undefined;
-        if (conversation.adapter && conversation.reference) {
-            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
-                return await logic(turnContext);
-            });
-        }
-        else return Promise.reject("Couldn't continue converation");
-    }
-
-    private async processActivityForUser(userOid: string, logic: (TurnContext) => Promise<any>) {
-        let updates = null;
-        try {
-            updates = this.findAllConversations(userOid).map(async c => {
-                if (c.adapter && c.reference) {
-                    await c.adapter.continueConversation(c.reference, async (turnContext) => {
-                        return logic(turnContext); // not awaiting yet
-                    });
-                }
-            });
-        }
-        catch (err) {
-            throw 'Unable to processAcvitityForUser' + err;
-        }
-        return await Promise.all(updates);
-    }
-    */
 }
 
 
@@ -232,7 +194,7 @@ async function sleep(milliseconds) {
 }
 
 
-export function generateSecretKey(length: number = 16): string {
+function generateSecretKey(length: number = 16): string {
     let buf = randomBytes(length);
     return buf.toString('hex');
 }

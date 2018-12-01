@@ -52,7 +52,7 @@ botServer.listen(process.env.port || process.env.PORT || 3978, function () {
 // Listen for incoming bot requests.
 botServer.post('/api/messages', async (req, res) => {
     await adapter.processActivity(req, res, async (turnContext) => {
-        await bot.onTurn(turnContext, adapter);
+        await bot.onTurn(turnContext);
     });
 });
 
