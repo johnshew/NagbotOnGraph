@@ -146,7 +146,7 @@ httpServer.get('/tasks', async (req, res, next) => {
     let errorMessage: string | null = null;
     try {
         let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-        let data = await graphHelper.get(accessToken, 'https://graph.microsoft.com/beta/me/outlook/tasks');
+        let data = await graphHelper.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')`);
         if (data && data.value) {
             res.header('Content-Type', 'text/html');
             res.write(`<html><head></head><body><h1>Tasks</h1>`);
