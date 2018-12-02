@@ -20,13 +20,14 @@ class AuthTokens {
         this.expires_on = data.expires_on;
     }
 }
+
 class JWT {
     oid?: string
 }
 
 export class AuthManager extends EventEmitter {
 
-    private _tokensMap = new Map<string, AuthTokens>(); // UserAuthSecret to AuthTokens
+    private _userAuthKeyToTokensMap = new Map<string, AuthTokens>(); // UserAuthKey to AuthTokens
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) { super(); }
 
@@ -70,7 +71,7 @@ export class AuthManager extends EventEmitter {
     }
 
     jwtForUserAuthKey(authKey: string) {
-        let tokens = this._tokensMap.get(authKey);
+        let tokens = this._userAuthKeyToTokensMap.get(authKey);
         if (!tokens) return null;
         return <JWT>parseJwt(tokens.id_token);
     }
@@ -78,7 +79,7 @@ export class AuthManager extends EventEmitter {
     async accessTokenForAuthKey(authKey: string, resource?: string) {
         return new Promise<string>(async (resolve, reject) => {
             try {
-                let tokens = this._tokensMap.get(authKey);
+                let tokens = this._userAuthKeyToTokensMap.get(authKey);
                 if (!tokens) { return reject('No tokens for user. Not logged in.'); }
                 if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return resolve(tokens.access_token); }
                 if (tokens.refresh_token) {
@@ -91,13 +92,12 @@ export class AuthManager extends EventEmitter {
         })
     }
 
-
     addScopes(scopes: string[]) {
         this.scopes.concat(scopes);
     }
 
     private getTokensForUserAuthKey(authKey: string): AuthTokens | null {
-        let tokens = this._tokensMap.get(authKey);
+        let tokens = this._userAuthKeyToTokensMap.get(authKey);
         if (!tokens) return null;
         return tokens;
     }
@@ -105,10 +105,10 @@ export class AuthManager extends EventEmitter {
 
     private setTokensForUserAuthKey(authSecret: string, value: AuthTokens) {
         if (authSecret !== value.auth_secret) throw new Error('UserAuthSecret does not match');
-        if (isDeepStrictEqual(this._tokensMap.get(authSecret), value)) {
+        if (isDeepStrictEqual(this._userAuthKeyToTokensMap.get(authSecret), value)) {
             return
         }
-        this._tokensMap.set(authSecret, value);
+        this._userAuthKeyToTokensMap.set(authSecret, value);
         this.emit('refreshed');
     }
 
@@ -153,7 +153,6 @@ export declare interface AuthManager {
     // on(event: string, listener: Function): this;
     // emit(event: string | symbol, ...args : any[]) : boolean;
 }
-
 
 function parseJwt(token) {
     var base64Url = token.split('.')[1];

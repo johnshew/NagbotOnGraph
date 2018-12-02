@@ -45,30 +45,25 @@ try {
 // Create bot HTTP server
 let botServer = restify.createServer();
 botServer.name = 'BotServer';
-botServer.listen(process.env.port || process.env.PORT || 3978, function () {
+botServer.listen(process.env.port || process.env.PORT || 3978,  () => {
     console.log(`\n${botServer.name} listening to ${botServer.url}`);
 });
 
-// Listen for incoming bot requests.
 botServer.post('/api/messages', async (req, res) => {
     await adapter.processActivity(req, res, async (turnContext) => {
         await bot.onTurn(turnContext);
     });
 });
 
-
+// Create the Web Server
 let httpServer = restify.createServer();
-
 httpServer.use(restify.plugins.bodyParser());
 httpServer.use(restify.plugins.queryParser());
 httpServer.use((req, res, next) => {
     console.log(`Request for ${req.url}`); next();
 });
 
-// Make it a web server
-httpServer.get('/', (req, res, next) => {
-    res.redirect('./public/test.html', next);
-});
+httpServer.get('/', (req, res, next) => { res.redirect('./public/test.html', next); });
 
 httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
@@ -85,7 +80,6 @@ httpServer.get('/bot-login', (req, res, next) => {
     console.log(`redirecting to ${authUrl}`);
     res.redirect(authUrl, next);
 });
-
 
 httpServer.get('/auth', async (req, res, next) => {
     try {
