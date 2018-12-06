@@ -58,7 +58,7 @@ export class Server extends http.Server {
                     if (state.key) {
                         // should send verification code to user via web and wait for it on the bot.
                         // ignore for now.
-                        let conversation = await app.bot.finishUserConversationKeyToOidAssociation(state.key, jwt.oid, userAuthKey);
+                        let conversation = await app.bot.convertTempUserConversationKeyToUser(state.key, jwt.oid, userAuthKey);
                         await app.bot.processActivityInConversation(conversation, async (turnContext) => {
                             return await turnContext.sendActivity('Got your web connections.');
                         });

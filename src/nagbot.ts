@@ -1,36 +1,41 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+import { default as app } from './app';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
-import { ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
+import { Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
-
-
 
 /**
  * A simple bot that responds to utterances with answers from the Language Understanding (LUIS) service.
  * If an answer is not found for an utterance, the bot responds with help.
  */
 
-class ConversationTracker {
+export class ConversationTracker {
     adapter: BotAdapter;
     reference: Partial<ConversationReference>;
-    userConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
+    tempUserConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
     verified?: boolean;
-    verificationKey?: string // locally generated and ephemeral - not used yet
+    tempVerificationKey?: string // locally generated and ephemeral - not used yet
     userOid?: string // from Oauth - uniquely identifies this user - and is used to find conversations.
     userAuthKey?: string;  // authManger secret key ( can be shared with client over a secure channel )
     expiresOn?: Date;
 }
 
-class UserTracker {
-    userOid?: string;
+export class UserTracker {
+    oid?: string;
+    authKey?: string;
+    preferredName?: string;
 }
 
 export class NagBot {
+    private conversationState: ConversationState;
+    private userState: UserState;
 
+    constructor(private store: Storage) {
+        this.conversationState = new ConversationState(store);
+        this.userState = new UserState(store);
 
-    constructor(private conversationState: ConversationState, private userState: UserState) {
         // Create the state property accessors for the conversation data and user profile.
         this.conversationAccessor = this.conversationState.createProperty<ConversationTracker>('conversationData');
         this.userAccessor = this.userState.createProperty<UserTracker>('userData');
@@ -40,9 +45,9 @@ export class NagBot {
     private userAccessor: StatePropertyAccessor<UserTracker>;
     // The following two maps duplicate bot state in memory - current bot state primitives don't enable iteration to find the data.  
     // Instead of duplicating the entire tracker we could store a key to adapter/conversationReference that would enable the creation of turnContext which could then be used get/set the data.
-    // Perhaps a better alternative is to add this key mapping is a key mapping wrapper around any given storage object includes storing the mapping.
+    // Perhaps a better alternative is to add this key mapping to a wrapper around any given storage object - so access stores the mapping.
     // Keeping it simple for now and just duplicating.
-    private mapOfUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
+    private mapOfTempUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
     private mapOfUserOidToConversations = new Map<string, Set<ConversationTracker>>(); // all known conversations associated with a user as identified by their Auth2 oid.
 
     /**
@@ -77,7 +82,7 @@ export class NagBot {
                         }
                         await this.prepConversationForLogin(conversation);
                         await this.storeConversation(conversation);
-                        let signinCardAttachment = CardFactory.signinCard('title', `http://localhost:8080/bot-login?conversationKey=${conversation.userConversationKey}`, 'text on the card');
+                        let signinCardAttachment = CardFactory.signinCard('title', `${app.bitLoginUrl}?conversationKey=${conversation.tempUserConversationKey}`, 'text on the card');
                         console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
                         await turnContext.sendActivity({ attachments: [signinCardAttachment] });
                         return;
@@ -123,7 +128,7 @@ export class NagBot {
                 return await logic(turnContext);
             });
         } catch (err) {
-            console.log('problem in running activity in conversation.');
+            console.log('problem running activity in conversation.');
             throw err;
         }
     }
@@ -141,14 +146,14 @@ export class NagBot {
         });
     }
 
-    async finishUserConversationKeyToOidAssociation(userConversationKey: string, userOid: string, userAuthManagerKey: string): Promise<ConversationTracker | undefined> {
-        let conversation = this.mapOfUserConversationKeytoConversation.get(userConversationKey);
+    async convertTempUserConversationKeyToUser(userConversationKey: string, userOid: string, userAuthManagerKey: string): Promise<ConversationTracker | undefined> {
+        let conversation = this.mapOfTempUserConversationKeytoConversation.get(userConversationKey);
         if (conversation) {
             // Remove ephemeral UserConversationKey to conversation from Map.
-            this.mapOfUserConversationKeytoConversation.delete(userConversationKey);  // no longer used
+            this.mapOfTempUserConversationKeytoConversation.delete(userConversationKey);  // no longer used
 
             // Update conversation state
-            delete conversation.userConversationKey;
+            delete conversation.tempUserConversationKey;
             conversation.userOid = userOid;
             conversation.userAuthKey = userAuthManagerKey;
             // !To Do - where to handle verification
@@ -161,7 +166,8 @@ export class NagBot {
             // Store the updated user
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 let userData = await this.userAccessor.get(turnContext, {});
-                userData.userOid = conversation.userOid;
+                userData.oid = conversation.userOid;
+                userData.authKey = conversation.userAuthKey;
                 await this.userAccessor.set(turnContext, userData);
                 await this.userState.saveChanges(turnContext);
             });
@@ -182,8 +188,8 @@ export class NagBot {
     private async prepConversationForLogin(conversation: ConversationTracker) {
         if (conversation && conversation.userOid && conversation.userAuthKey) throw 'bad convesation in login prep';
         let userConversationKey = generateSecretKey(8);
-        conversation.userConversationKey = userConversationKey,
-            this.mapOfUserConversationKeytoConversation.set(conversation.userConversationKey, conversation);
+        conversation.tempUserConversationKey = userConversationKey,
+            this.mapOfTempUserConversationKeytoConversation.set(conversation.tempUserConversationKey, conversation);
     }
 
 }
