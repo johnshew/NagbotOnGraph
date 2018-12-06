@@ -2,12 +2,12 @@
   "name": "nlp-with-luis",
   "version": "1.0.0",
   "description": "Bot Builder v4 sample using LUIS for NLP",
-  "main": "./lib/index.js",
+  "main": "./lib/app.js",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node ./lib/index.js",
+    "start": "tsc && node ./lib/app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "concurrently --kill-others \"tsc -w\" \"nodemon ./lib/index.js\""
+    "watch": "concurrently --kill-others \"tsc -w\" \"nodemon ./lib/app.js\""
   },
   "author": "Microsoft",
   "license": "MIT",
