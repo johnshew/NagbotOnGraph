@@ -6,12 +6,12 @@ import * as http from 'http';
 
 // Create the Web Server
 export class Server extends http.Server {
-    constructor(requestListener?: (req: http.IncomingMessage, res: http.ServerResponse) => void) {
+    constructor(port : string, requestListener?: (req: http.IncomingMessage, res: http.ServerResponse) => void) {
         super(requestListener);
         let This = <http.Server>this;
 
         let httpServer = restify.createServer();
-        This = httpServer;
+        This = httpServer; // TO DO - does this really work?
 
         let authManager = app.authManager;
         let graphHelper = app.graphHelper;
@@ -195,7 +195,7 @@ export class Server extends http.Server {
             return next();
         });
 
-        httpServer.listen(process.env.port || process.env.PORT || 8080, () => {
+        httpServer.listen(port, () => {
             console.log(`\n${httpServer.name} listening to ${httpServer.url}`);
         });
     }
