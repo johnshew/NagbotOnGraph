@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+    <title>App</title>
+
+    <!-- Required Stylesheets -->
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/vuesax/dist/vuesax.css" />
+
+    <!-- Required scripts -->
+    <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/http-vue-loader"></script>
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+    <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+    <script src="https://unpkg.com/vuesax/dist/vuesax.umd.js"></script> <!-- For sidebar -->
+
+    <script src='./pages/home.vue.js'></script>
+    <script src='./pages/tasks.vue.js'></script>
+
+</head>
+
+<body>
+    <!-- Our application root element -->
+    <div class="container body-content">
+        <div id="app" v-cloak>
+            <router-link to="/home">
+                <b-button>Home</b-button>
+            </router-link>
+            <router-link to="/tasks">
+                <b-button>Tasks</b-button>
+            </router-link>
+            <router-view></router-view>
+        </div>
+    </div>
+
+    <!-- Start running your app -->
+    <script>
+        Vue.use(VueRouter);
+
+        const routes = [{
+            path: '/home',
+            component: spaHome
+        },
+        {
+            path: '/tasks',
+            component: spaTasks
+        }];
+
+        let router = new VueRouter({ routes });
+
+        router.beforeEach((to, from, next) => {
+            next()
+        });
+
+        window.app = new Vue({
+            el: "#app",
+            data: {
+                text: '',
+                active: false
+            },
+            computed: {
+                valid() {
+                    return this.text.length > 0 ? true : false;
+                }
+            },
+            mounted() {
+                this.$router.push('/home');
+            },
+            router
+        })
+    </script>
+
+
+</body>
+
+</html>

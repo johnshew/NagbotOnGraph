@@ -37,8 +37,8 @@ let app = new AppConfig();
 
 export default app;
 
-app.authManager = new simpleAuth.AuthManager(app.appId, app.appPassword, app.authUrl, app.authDefaultScopes);
 app.graphHelper = new graphHelper.GraphHelper();
+app.authManager = new simpleAuth.AuthManager(app.appId, app.appPassword, app.authUrl, app.authDefaultScopes);
 app.authManager.on('refreshed', () => console.log('refreshed'))
 
 const botService = new SimpleBotService(NagBot, app.appId, app.appPassword, botPort);

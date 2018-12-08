@@ -1,7 +1,6 @@
 import * as fetch from 'node-fetch';
 
-export class GraphHelper {
-    // const app reg details  
+export class GraphHelper { 
 
     public async get(accessToken: string, url: string): Promise<any> {
         return new Promise<void>(async (resolve, reject) => {
