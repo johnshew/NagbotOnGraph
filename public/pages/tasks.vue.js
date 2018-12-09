@@ -5,7 +5,7 @@ var spaTasks = Vue.component("Tasks", {
     <div v-for="task in tasks" v-if="tasks.length>0">
         <br/>
         <h3>{{ task.subject }}</h3>
-        <b>{{task.dueDate.toString() }}</b> 
+        <b>{{task.dueDateTime.dateTime }}</b> 
         <br/>[
         <template v-for="category in task.categories">
               {{category}}                
@@ -29,21 +29,19 @@ var spaTasks = Vue.component("Tasks", {
     methods: {
         GetTasks() {
             let url =
-                "../../api/tasks";
+                "/api/v1.0/tasks";
+            window.fetch(url)
+            .then(response => {
+                return response.json();                
+            }).then(json => {
+                return this.tasks = json.value;
+            })
+            .catch(err => {
+                console.error('Error:',err);
+            });
+
             this.progress = true;
             this.ready = true;
-            this.tasks =[
-                {
-                    subject: 'Task 1',
-                    categories: [],
-                    dueDate: new Date(),                
-                },
-                {
-                    subject: 'Task 2',
-                    categories: ['Food', "Nag"],
-                    dueDate: new Date(),
-                }
-            ]
         }
     }
 });

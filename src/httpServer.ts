@@ -6,7 +6,7 @@ import * as http from 'http';
 
 // Create the Web Server
 export class Server extends http.Server {
-    constructor(port : string, requestListener?: (req: http.IncomingMessage, res: http.ServerResponse) => void) {
+    constructor(port: string, requestListener?: (req: http.IncomingMessage, res: http.ServerResponse) => void) {
         super(requestListener);
         let This = <http.Server>this;
 
@@ -16,9 +16,16 @@ export class Server extends http.Server {
         let authManager = app.authManager;
         let graphHelper = app.graphHelper;
         let bot = app.bot;
-        
+
         httpServer.use(restify.plugins.bodyParser());
         httpServer.use(restify.plugins.queryParser());
+
+        httpServer.pre((req, res, next) => {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Headers", "X-Requested-With");
+            return next();
+        });
+
         httpServer.use((req, res, next) => {
             console.log(`Request for ${req.url} `);
             next();
@@ -108,8 +115,7 @@ export class Server extends http.Server {
                     res.write(`<html><head></head><body><h1>Tasks</h1>`);
                     data.value.forEach(i => { res.write(`<p>${i.subject}</p>`); });
                     res.end(`</body></html>`);
-                    next();
-                    return;
+                    return next();
                 }
                 errorMessage = "Request to graph failed.";
             }
@@ -118,6 +124,22 @@ export class Server extends http.Server {
             res.end(`<html><head></head><body>${errorMessage || "Not authorized."}<br/><a href="/">Continue</a></body></html>`);
             next();
         });
+
+        httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
+            let errorMessage: string | null = null;
+            try {
+                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+                let data = await graphHelper.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')`);
+                if (data && data.value) {
+                    res.json(data);
+                    return next();
+                }
+                errorMessage = "API tasks request to graph failed.";
+            }
+            catch (err) { errorMessage = "API tasks failed.  Detail: " + err; }
+            return next(new Error(errorMessage));
+        });
+
 
         httpServer.get('/profile', async (req, res, next) => {
             let errorMessage: string | null = null;
