@@ -2,6 +2,8 @@ import { default as app } from './app';
 import * as restify from 'restify';
 import * as MicrosoftGraph from "@microsoft/microsoft-graph-types"
 import * as http from 'http';
+import { response } from 'spdy';
+import { RSA_NO_PADDING } from 'constants';
 
 
 // Create the Web Server
@@ -85,61 +87,22 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/mail', async (req, res, next) => {
-            let errorMessage: string | null = null;
-            try {
-                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-                let data = await graphHelper.get(accessToken, 'https://graph.microsoft.com/v1.0/me/messages');
-                if (data) {
-                    res.header('Content-Type', 'text/html');
-                    res.write(`<html><head></head><body><h1>Mail</h1>`);
-                    data.value.forEach(i => { res.write(`<p>${i.subject}</p>`); });
-                    res.end('</body></html>');
-                    next();
-                    return;
-                }
-                errorMessage = "Request to graph failed.";
-            }
-            catch (err) { }
-            res.setHeader('Content-Type', 'text/html');
-            res.end(`<html><head></head><body>${errorMessage || "Not authorized."}<br/><a href="/">Continue</a></body></html>`);
-            next();
+            await graphForwarder(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (result) => {
+                let subjects = result.map(i => { return 'Subject: ' + i.subject; });
+                return templateHtmlResponse('Mail', '', subjects, '<a href="/">Continue</a>');
+            })
         });
 
         httpServer.get('/tasks', async (req, res, next) => {
-            let errorMessage: string | null = null;
-            try {
-                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-                let data = await graphHelper.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')`);
-                if (data && data.value) {
-                    res.header('Content-Type', 'text/html');
-                    res.write(`<html><head></head><body><h1>Tasks</h1>`);
-                    data.value.forEach(i => { res.write(`<p>${i.subject}</p>`); });
-                    res.end(`</body></html>`);
-                    return next();
-                }
-                errorMessage = "Request to graph failed.";
-            }
-            catch (err) { }
-            res.setHeader('Content-Type', 'text/html');
-            res.end(`<html><head></head><body>${errorMessage || "Not authorized."}<br/><a href="/">Continue</a></body></html>`);
-            next();
+            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')", (result) => {
+                let subjects = result.map(i => { return 'Subject: ' + i.subject; });
+                return templateHtmlResponse('Tasks', '', subjects, '<a href="/">Continue</a>');
+            })
         });
 
         httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-            let errorMessage: string | null = null;
-            try {
-                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-                let data = await graphHelper.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')`);
-                if (data && data.value) {
-                    res.json(data);
-                    return next();
-                }
-                errorMessage = "API tasks request to graph failed.";
-            }
-            catch (err) { errorMessage = "API tasks failed.  Detail: " + err; }
-            return next(new Error(errorMessage));
-        });
-
+            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')");
+        })
 
         httpServer.get('/profile', async (req, res, next) => {
             let errorMessage: string | null = null;
@@ -234,4 +197,58 @@ function getCookie(req: restify.Request, key: string): string {
     })
 
     return (key && key in list) ? list[key] : null;
+}
+
+function templateHtmlList(list: string[]) {
+    if (!list || list.length === 0) return '';
+    let items = list.reduce<string>((prev, current) => { return (prev + '<li>' + current + '</li>') }, '');
+    return `<ul> ${items} </ul>`
+}
+
+function templateHtmlResponse(title: string, message: string, list: string[], footer: string) {
+    return `<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> ${ title} </title>
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/css-type-base/index.css" />
+</head>
+
+<body>
+    <h2>${ title}</h2>    
+    <div>${ message}</div>
+    ${ templateHtmlList(list)}
+    <div> ${ footer} <div>
+</body>
+
+</html>`
+}
+
+function composeResponse(res: restify.Response, content: string) {
+    res.setHeader('Content-Type', 'text/html');
+    res.end(content);
+}
+
+async function graphForwarder(req, res, next, url, composer?: (result: any) => string) {
+    let errorMessage: string | null = null;
+    try {
+        let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+        let data = await app.graphHelper.get(accessToken, url);
+        if (data && data.value) {
+            if (composer) {
+                composeResponse(res, composer(data.value));
+            } else {
+                res.json(data.value);
+            }
+            res.end();
+            return next();
+        }
+        errorMessage = 'No value';
+    }
+    catch (err) {
+        errorMessage = 'graphForwarder error.  Detail: ' + err;
+    }
+    composeResponse(res, templateHtmlResponse('Error', errorMessage, [], '<a href="/">Continue</a>'));
+    res.end();
+    return next();
 }
