@@ -52,8 +52,17 @@ function tick() {
     users.forEach(async u => {
         try {
             let accessToken = await app.authManager.accessTokenForAuthKey(u.authKey);
-            let result = await app.graphHelper.get(accessToken, "https://graph.microsoft.com/v1.0/me/");
-            console.log(`User: ${JSON.stringify(result)} `);
+            let user = await app.graphHelper.get(accessToken, "https://graph.microsoft.com/v1.0/me/");
+            console.log(`User: ${JSON.stringify(user)} `);
+            let tasks = await app.graphHelper.get(accessToken, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))");
+            tasks.value.forEach(task => {
+                let conversations = app.bot.findAllConversations(user.id);
+                conversations.forEach(async c => {
+                    await app.bot.processActivityInConversation(c, async turnContext => {
+                        await turnContext.sendActivity('You should take care of ' + task.subject);
+                    });
+                });
+            });
         } catch (err) {
             console.log(`Error in tick: ${err}`);
         }

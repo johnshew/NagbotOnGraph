@@ -33,7 +33,7 @@ export class Server extends http.Server {
             next();
         });
 
-        httpServer.get('/', (req, res, next) => { res.redirect('./public/test.html', next); });
+        httpServer.get('/', (req, res, next) => { res.redirect('./public/app.html', next); });
 
         httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
@@ -87,22 +87,19 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/mail', async (req, res, next) => {
-            await graphForwarder(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (result) => {
-                let subjects = result.map(i => { return 'Subject: ' + i.subject; });
+            await graphForwarder(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data) => {
+                let subjects = data.value.map(i => { return 'Subject: ' + i.subject; });
                 return templateHtmlResponse('Mail', '', subjects, '<a href="/">Continue</a>');
             })
         });
 
         httpServer.get('/tasks', async (req, res, next) => {
-            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')", (result) => {
-                let subjects = result.map(i => { return 'Subject: ' + i.subject; });
+            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data) => {
+                let subjects = data.value.map(i => { return 'Subject: ' + i.subject; });
                 return templateHtmlResponse('Tasks', '', subjects, '<a href="/">Continue</a>');
             })
         });
 
-        httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?$filter=categories/any(a:a+eq+'NagMe')");
-        })
 
         httpServer.get('/profile', async (req, res, next) => {
             let errorMessage: string | null = null;
@@ -180,6 +177,16 @@ export class Server extends http.Server {
             return next();
         });
 
+        httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
+            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))");
+            // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
+            // 
+        })
+
+        httpServer.get('/api/v1.0/me', async (req, res, next) => {
+            await graphForwarder(req, res, next, "https://graph.microsoft.com/v1.0/me");
+        })
+
         httpServer.listen(port, () => {
             console.log(`\n${httpServer.name} listening to ${httpServer.url}`);
         });
@@ -234,11 +241,11 @@ async function graphForwarder(req, res, next, url, composer?: (result: any) => s
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         let data = await app.graphHelper.get(accessToken, url);
-        if (data && data.value) {
+        if (data) {
             if (composer) {
-                composeResponse(res, composer(data.value));
+                composeResponse(res, composer(data));
             } else {
-                res.json(data.value);
+                res.json(data);
             }
             res.end();
             return next();
