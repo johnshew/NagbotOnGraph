@@ -19,14 +19,15 @@ export class Server extends http.Server {
         let graphHelper = app.graphHelper;
         let bot = app.bot;
 
-        httpServer.use(restify.plugins.bodyParser());
-        httpServer.use(restify.plugins.queryParser());
-
         httpServer.pre((req, res, next) => {
             res.header("Access-Control-Allow-Origin", "*");
             res.header("Access-Control-Allow-Headers", "X-Requested-With");
             return next();
         });
+
+        httpServer.use(restify.plugins.bodyParser());
+        httpServer.use(restify.plugins.queryParser());
+
 
         httpServer.use((req, res, next) => {
             console.log(`Request for ${req.url} `);
@@ -182,6 +183,12 @@ export class Server extends http.Server {
             // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
             // 
         })
+
+        httpServer.get('/api/v1.0/tasks/:id', async (req, res, next) => {
+            let id = req.params["id"];
+            await graphForwarder(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}`);
+        })
+
 
         httpServer.get('/api/v1.0/me', async (req, res, next) => {
             await graphForwarder(req, res, next, "https://graph.microsoft.com/v1.0/me");

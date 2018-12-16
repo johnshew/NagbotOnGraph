@@ -5,7 +5,8 @@ var spaTasks = Vue.component("Tasks", {
     <div v-for="task in tasks" v-if="tasks.length>0">
         <br/>
         <h3>{{ task.subject }}</h3>
-        <b>{{task.dueDateTime.dateTime }}</b> 
+        <b>{{task.dueDateTime.dateTime.toLocaleString() }}</b> 
+        <p>{{task.id }}</p> 
         <br/>[
         <template v-for="category in task.categories">
               {{category}}                
