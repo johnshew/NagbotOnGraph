@@ -119,7 +119,8 @@ export class NagBot {
     }
 
     findAllConversations(oid: string): ConversationTracker[] {
-        return Array.from(this.mapOfUserOidToConversations.get(oid));
+        let conversations = this.mapOfUserOidToConversations.get(oid);
+        return (conversations) ? Array.from(conversations) : [];
     }
 
     async processActivityInConversation(conversation: ConversationTracker, logic: (TurnContext) => Promise<any>) {

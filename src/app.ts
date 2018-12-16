@@ -14,7 +14,7 @@ var appPassword = process.env.appPassword;
 if (!appId || !appPassword) { throw new Error('No app credentials.'); process.exit(); }
 
 var httpServerPort = process.env.port || process.env.PORT || '8080';
-var httpServerUrl = `http://localhost${ httpServerPort.length > 0 ? ':' + httpServerPort : ''}`;
+var httpServerUrl = `http://localhost${httpServerPort.length > 0 ? ':' + httpServerPort : ''}`;
 var authUrl = httpServerUrl + '/auth';
 var authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.Read', 'User.ReadWrite'];
 var botLoginUrl = httpServerUrl + '/bot-login'
@@ -57,11 +57,13 @@ function tick() {
             let tasks = await app.graphHelper.get(accessToken, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))");
             tasks.value.forEach(task => {
                 let conversations = app.bot.findAllConversations(user.id);
-                conversations.forEach(async c => {
-                    await app.bot.processActivityInConversation(c, async turnContext => {
-                        await turnContext.sendActivity('You should take care of ' + task.subject);
+                if (conversations) {
+                    conversations.forEach(async c => {
+                        await app.bot.processActivityInConversation(c, async turnContext => {
+                            await turnContext.sendActivity('You should take care of ' + task.subject);
+                        });
                     });
-                });
+                }
             });
         } catch (err) {
             console.log(`Error in tick: ${err}`);
