@@ -6,6 +6,27 @@
         {
             "type": "npm",
             "script": "watch",
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "option": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
+            ]
+        },
+        {
+            "type": "npm",
+            "script": "watch",
             "label": "npm: run watch",
             "isBackground": true,
             "problemMatcher": {
