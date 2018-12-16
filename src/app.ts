@@ -47,7 +47,7 @@ app.bot = botService.bot;
 app.httpServer = new httpServer.Server(httpServerPort);
 
 function tick() {
-    console.log('In tick');
+    console.log(`Tick (${ new Date().toLocaleString() })`);
     let users = app.users;
     users.forEach(async u => {
         try {
