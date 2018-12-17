@@ -1,7 +1,7 @@
 {
-  "name": "nlp-with-luis",
+  "name": "nagbot",
   "version": "1.0.0",
-  "description": "Bot Builder v4 sample using LUIS for NLP",
+  "description": "Task nagging leveraging Microsoft Graph and the Bot Framework.",
   "main": "./lib/app.js",
   "scripts": {
     "build": "tsc",

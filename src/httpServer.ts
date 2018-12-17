@@ -12,7 +12,7 @@ export class Server extends http.Server {
         super(requestListener);
         let This = <http.Server>this;
 
-        let httpServer = restify.createServer();
+        let httpServer = restify.createServer(<restify.ServerOptions> { maxParamLength: 1000 });
         This = httpServer; // TO DO - does this really work?
 
         let authManager = app.authManager;
