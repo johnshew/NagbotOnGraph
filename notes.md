@@ -23,13 +23,13 @@
 
 * P1 -  for "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time.
 
-* P1 - Send a Nag with a url to nagbot.shew.net/nag/id where id is the Outlook Task id.
+* P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id.
 
   * P3 - Consider expiring these after say a day.  But if you are logged in - which you would be on your phone - then no big deal. 
 
-* P2 - Host in the cloud.
+* P2 - Show/Edit task/id P3 - Have a way show all tasks to mark requests as Naggable - for now use Category.
 
-* P3 - Have a way show all tasks to mark requests as Naggable - for now use Category.
+* P2 - Host in the cloud.
 
 * P3 - Nag Policy - use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
 
