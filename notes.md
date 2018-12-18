@@ -4,14 +4,11 @@
 
 * Then login to at least one bot and signin. (done)
 
-* Then for incomplete tasks send notifications to associated bot channels according to policy.  (mostly done - need policy and last nagTime)  (P3)
+* Then for "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time.
 
-* The notification contains a URL that leads to the signed in web app that shows the task.  (P0)
+* The notification contains a URL that leads to the web app - where we assume the user is logged in - that shows the task. (P0)
 
-* Based on a task link, display it and provide complete and incomplete.  (P1)
-
-    * Have UX just look at store.  
-    * Clicking sends change request to store.  Store change updates UX.
+* THe user mark can mark the task as complete.  This should immediately save and you can also click again to mark it not complete (P0)
 
 * We need to host the node app so it can work with teams, email, and SMS. (P4)
 
@@ -22,21 +19,29 @@
 
 # Work Items
 
-* P0 - api/v1.0/tasks/id - returns json for task
+* P0 - api/v1.0/tasks/id - returns json for task - done
 
-* P0 - Send a Nag with a url like nagbot.shew.net/nag?randomcode or nagbot.shew.net/nag/id where id is the Outlook Task id.
+* P0 - Send a Nag with a url to nagbot.shew.net/nag/id where id is the Outlook Task id.
 
 * P0 - Consider expiring these after say a day.  But if you are logged in - which you would be on your phone - then no big deal.  Need to decide.  Maybe id is simplist.
 
-* P1 - Have a way to mark requests as Naggable - for now use Category.
+* P1 - Host in the cloud.
 
-* P1 - Nag Policy - use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
+* P2 - Have a way show all tasks to mark requests as Naggable - for now use Category.
+
+* P2 - Nag Policy - use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
 
 # Interesting
 
 * <https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval>
 
 * <https://docs.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/complex-types-for-mail-contacts-calendar#MessageResource>
+
+# Futures 
+
+* UX.  Need one.  Wonder about resurrecting the React Office work.
+* UX and data model.  Would be nice to have auto-updating local data - Graph delta queries?  Simplest in the short term is just to get JSON data structures every time.
+* Easy signin. With the new URL approach pretty easy to create a URL with a short temp user key along with a shortened URL to signin and connect it.  Later could also send a QR code so no typing required on a mobile phone.  The mobile device is likely logged in or has password stored.
 
 
 # Extensions

@@ -5,18 +5,7 @@
     "tasks": [
         {
             "type": "npm",
-            "script": "watch",
-            "problemMatcher": {
-                "base": "$tsc-watch",
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        },
-        {
-            "type": "npm",
-            "script": "build",
+            "script": "build"
         },
         {
             "type": "typescript",
@@ -32,10 +21,14 @@
             "label": "npm: run watch",
             "isBackground": true,
             "problemMatcher": {
-                "base": "$tsc-watch",
+                "base": "$tsc-watch"
             },
             "runOptions": {
                 "runOn": "folderOpen"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
             }
         }
     ]
