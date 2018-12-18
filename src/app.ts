@@ -28,7 +28,7 @@ export class AppConfig {
     readonly authUrl = authUrl;
     readonly botLoginUrl = botLoginUrl;
     readonly authDefaultScopes = authDefaultScopes;
-    users = new Set<UserTracker>();
+    users = new Map<string, UserTracker>();
     authManager?: simpleAuth.AuthManager;
     graphHelper?: graphHelper.GraphHelper;
     httpServer?: httpServer.Server;
@@ -52,7 +52,7 @@ app.httpServer = new httpServer.Server(httpServerPort);
 function tick() {
     console.log(`Tick (${new Date().toLocaleString()})`);
     let users = app.users;
-    users.forEach(async user => {
+    users.forEach(async (user,key) => {
         try {
             let oid = app.authManager.jwtForUserAuthKey(user.authKey).oid;
             let accessToken = await app.authManager.accessTokenForAuthKey(user.authKey);
