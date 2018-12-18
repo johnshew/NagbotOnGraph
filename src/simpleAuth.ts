@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import { EventEmitter } from 'events';
-import * as fetch from 'node-fetch';
+import { default as fetch } from 'node-fetch';
 import { isDeepStrictEqual } from 'util';
 
 

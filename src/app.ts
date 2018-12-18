@@ -6,6 +6,8 @@ import * as httpServer from './httpServer';
 import * as graphHelper from './graphHelper';
 import { NagBot, UserTracker } from './nagbot';
 import { SimpleBotService } from './simpleBotService';
+import { OutlookTask, User } from "@microsoft/microsoft-graph-types-beta";
+import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
 
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
@@ -24,7 +26,7 @@ export class AppConfig {
     readonly appId = appId;
     readonly appPassword = appPassword;
     readonly authUrl = authUrl;
-    readonly bitLoginUrl = botLoginUrl;
+    readonly botLoginUrl = botLoginUrl;
     readonly authDefaultScopes = authDefaultScopes;
     users = new Set<UserTracker>();
     authManager?: simpleAuth.AuthManager;
@@ -46,26 +48,27 @@ app.bot = botService.bot;
 
 app.httpServer = new httpServer.Server(httpServerPort);
 
+
 function tick() {
-    console.log(`Tick (${ new Date().toLocaleString() })`);
+    console.log(`Tick (${new Date().toLocaleString()})`);
     let users = app.users;
-    users.forEach(async u => {
+    users.forEach(async user => {
         try {
-            let accessToken = await app.authManager.accessTokenForAuthKey(u.authKey);
-            let user = await app.graphHelper.get(accessToken, "https://graph.microsoft.com/v1.0/me/");
-            console.log(`User: ${JSON.stringify(user)} `);
-            let tasks = await app.graphHelper.get(accessToken, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))");
-            tasks.value.forEach(task => {
-                let conversations = app.bot.findAllConversations(user.id);
-                if (conversations) {
-                    conversations.forEach(async c => {
-                        await app.bot.processActivityInConversation(c, async turnContext => {
-                            await turnContext.sendActivity('You should take care of ' + task.subject);
-                        });
+            let oid = app.authManager.jwtForUserAuthKey(user.authKey).oid;
+            let accessToken = await app.authManager.accessTokenForAuthKey(user.authKey);
+            console.log(`User: ${oid}`);
+            let tasks = await app.graphHelper.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
+            if (tasks && tasks.value) tasks.value.forEach((task: OutlookTask) => {
+                console.log(`${task.subject} ${task.dueDateTime && task.dueDateTime.dateTime}`);
+                let conversations = app.bot.findAllConversations(oid);
+                if (conversations) conversations.forEach(async c => {
+                    await app.bot.processActivityInConversation(c, async turnContext => {
+                        await turnContext.sendActivity('You should take care of ' + task.subject);
                     });
-                }
+                });
             });
-        } catch (err) {
+        }
+        catch (err) {
             console.log(`Error in tick: ${err}`);
         }
     });

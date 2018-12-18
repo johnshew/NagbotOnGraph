@@ -11,7 +11,7 @@ import { randomBytes } from 'crypto';
  * If an answer is not found for an utterance, the bot responds with help.
  */
 
-export class ConversationTracker {
+export interface ConversationTracker {
     adapter: BotAdapter;
     reference: Partial<ConversationReference>;
     tempUserConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
@@ -22,7 +22,7 @@ export class ConversationTracker {
     expiresOn?: Date;
 }
 
-export class UserTracker {
+export interface UserTracker {
     oid?: string;
     authKey?: string;
     preferredName?: string;
@@ -82,7 +82,7 @@ export class NagBot {
                         }
                         await this.prepConversationForLogin(conversation);
                         await this.storeConversation(conversation);
-                        let signinCardAttachment = CardFactory.signinCard('title', `${app.bitLoginUrl}?conversationKey=${conversation.tempUserConversationKey}`, 'text on the card');
+                        let signinCardAttachment = CardFactory.signinCard('title', `${app.botLoginUrl}?conversationKey=${conversation.tempUserConversationKey}`, 'text on the card');
                         console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
                         await turnContext.sendActivity({ attachments: [signinCardAttachment] });
                         return;
@@ -139,7 +139,7 @@ export class NagBot {
             try {
                 await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                     await this.conversationAccessor.set(turnContext, conversation);
-                    return resolve(await this.conversationState.saveChanges(turnContext));  // not awaiting since outer function can await.
+                    return resolve(await this.conversationState.saveChanges(turnContext));  
                 });
             } catch (err) {
                 reject("Couldn't write state for converation");
@@ -196,7 +196,7 @@ export class NagBot {
 }
 
 
-async function sleep(milliseconds) {
+async function sleep(milliseconds : number) {
     return new Promise<void>(resolve => setTimeout(resolve, milliseconds));
 }
 

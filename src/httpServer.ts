@@ -2,8 +2,7 @@ import { default as app } from './app';
 import * as restify from 'restify';
 import * as MicrosoftGraph from "@microsoft/microsoft-graph-types"
 import * as http from 'http';
-import { response } from 'spdy';
-import { RSA_NO_PADDING } from 'constants';
+import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
 
 
 // Create the Web Server
@@ -179,7 +178,7 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))&${nagExpand}`);
+            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
             // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
             // 
         })
@@ -223,8 +222,6 @@ function templateHtmlList(list: string[]) {
     let items = list.reduce<string>((prev, current) => { return (prev + '<li>' + current + '</li>') }, '');
     return `<ul> ${items} </ul>`
 }
-
-let nagExpand = "$expand=singleValueExtendedProperties($filter=id eq 'String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast' or id eq 'String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences')"
 
 function templateHtmlResponse(title: string, message: string, list: string[], footer: string) {
     return `<html>

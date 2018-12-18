@@ -1,4 +1,4 @@
-import * as fetch from 'node-fetch';
+import { default as fetch } from 'node-fetch';
 
 export class GraphHelper { 
 
