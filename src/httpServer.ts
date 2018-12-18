@@ -12,7 +12,7 @@ export class Server extends http.Server {
         super(requestListener);
         let This = <http.Server>this;
 
-        let httpServer = restify.createServer(<restify.ServerOptions> { maxParamLength: 1000 });
+        let httpServer = restify.createServer(<restify.ServerOptions>{ maxParamLength: 1000 });
         This = httpServer; // TO DO - does this really work?
 
         let authManager = app.authManager;
@@ -88,14 +88,14 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/mail', async (req, res, next) => {
-            await graphForwarder(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data) => {
+            await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data) => {
                 let subjects = data.value.map(i => { return 'Subject: ' + i.subject; });
                 return templateHtmlResponse('Mail', '', subjects, '<a href="/">Continue</a>');
             })
         });
 
         httpServer.get('/tasks', async (req, res, next) => {
-            await graphForwarder(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data) => {
+            await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data) => {
                 let subjects = data.value.map(i => { return 'Subject: ' + i.subject; });
                 return templateHtmlResponse('Tasks', '', subjects, '<a href="/">Continue</a>');
             })
@@ -179,19 +179,24 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-            await graphForwarder(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))&${nagExpand}`);
+            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))&${nagExpand}`);
             // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
             // 
         })
 
         httpServer.get('/api/v1.0/tasks/:id', async (req, res, next) => {
             let id = req.params["id"];
-            await graphForwarder(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`);
+            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`);
         })
 
+        httpServer.patch('/api/v1.0/tasks/:id', async (req, res, next) => {
+            let id = req.params["id"];
+            let data = req.body;
+            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`, data);
+        })
 
         httpServer.get('/api/v1.0/me', async (req, res, next) => {
-            await graphForwarder(req, res, next, "https://graph.microsoft.com/v1.0/me");
+            await graphGet(req, res, next, "https://graph.microsoft.com/v1.0/me");
         })
 
         httpServer.listen(port, () => {
@@ -240,11 +245,7 @@ function templateHtmlResponse(title: string, message: string, list: string[], fo
 </html>`
 }
 
-function composeResponse(res: restify.Response, content: string) {
-
-}
-
-async function graphForwarder(req, res, next, url, composer?: (result: any) => string) {
+async function graphGet(req: restify.Request, res: restify.Response, next: restify.Next, url: string, composer?: (result: any) => string) {
     let errorMessage: string | null = null;
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
@@ -264,7 +265,23 @@ async function graphForwarder(req, res, next, url, composer?: (result: any) => s
     catch (err) {
         errorMessage = 'graphForwarder error.  Detail: ' + err;
     }
-    composeResponse(res, templateHtmlResponse('Error', errorMessage, [], '<a href="/">Continue</a>'));
-    res.end();
+    res.setHeader('Content-Type', 'text/html');
+    res.end(templateHtmlResponse('Error', errorMessage, [], '<a href="/">Continue</a>'));
+    return next();
+}
+
+
+async function graphPatch(req: restify.Request, res: restify.Response, next: restify.Next, url: string, data: string) {
+    let errorMessage: string | null = null;
+    try {
+        let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+        let result = await app.graphHelper.patch(accessToken, url, data);
+        return next();
+    }
+    catch (err) {
+        errorMessage = 'graphForwarder error.  Detail: ' + err;
+    }
+    res.setHeader('Content-Type', 'text/html');
+    res.end(templateHtmlResponse('Error', errorMessage, [], '<a href="/">Continue</a>'));
     return next();
 }
