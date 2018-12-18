@@ -123,7 +123,7 @@ export class NagBot {
         return (conversations) ? Array.from(conversations) : [];
     }
 
-    async processActivityInConversation(conversation: ConversationTracker, logic: (TurnContext) => Promise<any>) {
+    async processActivityInConversation(conversation: ConversationTracker, logic: (turnContext : TurnContext) => Promise<any>) {
         try {
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 return await logic(turnContext);

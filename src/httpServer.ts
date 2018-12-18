@@ -1,8 +1,8 @@
 import { default as app } from './app';
 import * as restify from 'restify';
-import * as MicrosoftGraph from "@microsoft/microsoft-graph-types"
 import * as http from 'http';
 import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
+import { OutlookTask, OpenTypeExtension }  from '@microsoft/microsoft-graph-types-beta';
 
 
 // Create the Web Server
@@ -87,15 +87,15 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/mail', async (req, res, next) => {
-            await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data) => {
-                let subjects = data.value.map(i => { return 'Subject: ' + i.subject; });
+            await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data : { value : OutlookTask[]}) => {
+                let subjects = data.value.map(tasks => 'Subject: ' + tasks.subject);
                 return templateHtmlResponse('Mail', '', subjects, '<a href="/">Continue</a>');
             })
         });
 
         httpServer.get('/tasks', async (req, res, next) => {
-            await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data) => {
-                let subjects = data.value.map(i => { return 'Subject: ' + i.subject; });
+            await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data : { value : OutlookTask[]}) => {
+                let subjects = data.value.map(task => 'Subject: ' + task.subject);
                 return templateHtmlResponse('Tasks', '', subjects, '<a href="/">Continue</a>');
             })
         });
@@ -126,7 +126,7 @@ export class Server extends http.Server {
 
         httpServer.get('/update', async (req, res, next) => {
             let responseCode: number | null = null;
-            let body: MicrosoftGraph.OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
+            let body: OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
             try {
                 let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
                 await graphHelper.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
@@ -191,8 +191,18 @@ export class Server extends http.Server {
         httpServer.patch('/api/v1.0/tasks/:id', async (req, res, next) => {
             let id = req.params["id"];
             let data = req.body;
-            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`, data);
+            await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`, data);
         })
+
+        httpServer.get('/test-patch', async (req, res, next) => {
+            let tasks = await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
+            if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
+                let task = <OutlookTask> tasks.value[0];
+                let id = task.id;
+                let data = JSON.parse("{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }");
+                await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`, data);
+            }            
+        });
 
         httpServer.get('/api/v1.0/me', async (req, res, next) => {
             await graphGet(req, res, next, "https://graph.microsoft.com/v1.0/me");
@@ -205,7 +215,7 @@ export class Server extends http.Server {
 }
 
 function getCookie(req: restify.Request, key: string): string {
-    var list = {};
+    var list = <{ [index : string] : string }>  {};
     var rc = req.header('cookie');
 
     rc && rc.split(';').forEach(cookie => {
@@ -242,7 +252,7 @@ function templateHtmlResponse(title: string, message: string, list: string[], fo
 </html>`
 }
 
-async function graphGet(req: restify.Request, res: restify.Response, next: restify.Next, url: string, composer?: (result: any) => string) {
+async function graphGet(req: restify.Request, res: restify.Response, next: restify.Next, url: string, composer?: (result: any) => string) : Promise<any> {
     let errorMessage: string | null = null;
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
@@ -269,7 +279,7 @@ async function graphGet(req: restify.Request, res: restify.Response, next: resti
 
 
 async function graphPatch(req: restify.Request, res: restify.Response, next: restify.Next, url: string, data: string) {
-    let errorMessage: string | null = null;
+    let errorMessage = "";
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
         let result = await app.graphHelper.patch(accessToken, url, data);

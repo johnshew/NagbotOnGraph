@@ -1,19 +1,19 @@
 import { default as app } from './app';
 import { NagBot } from './nagbot';
 import * as restify from 'restify';
-import { Storage as BotStorage, BotFrameworkAdapter, MemoryStorage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
+import { Storage, BotFrameworkAdapter, MemoryStorage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 
 interface BotInterface {
-    onTurn(turnContent: TurnContext);
+    onTurn(turnContent: TurnContext) : void;
 };
 
 export class SimpleBotService<Bot extends BotInterface> {
     public bot: Bot;
-    public storage: BotStorage;
+    public storage: Storage;
     public adapter: BotFrameworkAdapter;
     public httpServer: restify.Server;
 
-    constructor(botConstructor: { new(BotStorage): Bot }, appId: string, appPassword, port: string | number) {
+    constructor(botConstructor: { new(store : Storage): Bot }, appId: string, appPassword : string, port: string | number) {
         this.storage = new MemoryStorage();
 
         this.adapter = new BotFrameworkAdapter({ appId: app.appId, appPassword: app.appPassword });

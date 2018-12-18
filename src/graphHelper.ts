@@ -28,7 +28,7 @@ export class GraphHelper {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + accessToken
                 },
-                body: JSON.stringify(body)
+                body: body
             }
             let response = await fetch(url, options);
             if (response.status == 200 || response.status == 204) {
