@@ -17,6 +17,7 @@
     "botbuilder-ai": "^4.2.0",
     "botframework-config": "^4.2.0",
     "dotenv": "^6.2.0",
+    "mongodb": "^3.1.10",
     "node-fetch": "^2.3.0",
     "restify": "^7.3.0"
   },
@@ -24,6 +25,7 @@
     "@microsoft/microsoft-graph-types": "^1.5.0",
     "@microsoft/microsoft-graph-types-beta": "microsoftgraph/msgraph-typescript-typings#beta",
     "@types/dotenv": "^6.1.0",
+    "@types/mongodb": "^3.1.17",
     "@types/node-fetch": "^2.1.4",
     "@types/restify": "^7.2.6",
     "concurrently": "^4.0.1",

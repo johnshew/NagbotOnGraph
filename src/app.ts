@@ -13,7 +13,9 @@ const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
 var appId = process.env.appId;
 var appPassword = process.env.appPassword;
-if (!appId || !appPassword) { throw new Error('No app credentials.'); process.exit(); }
+var mongoConnection = process.env.mongoConnection;
+
+if (!appId || !appPassword || !mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 var httpServerPort = process.env.port || process.env.PORT || '8080';
 var httpServerUrl = `http://localhost${httpServerPort.length > 0 ? ':' + httpServerPort : ''}`;
@@ -25,6 +27,7 @@ var botPort = process.env.botport || process.env.BOTPORT || 3978;
 export class AppConfig {
     readonly appId = appId;
     readonly appPassword = appPassword;
+    readonly mongoConnection = mongoConnection;
     readonly authUrl = authUrl;
     readonly botLoginUrl = botLoginUrl;
     readonly authDefaultScopes = authDefaultScopes;
@@ -49,10 +52,11 @@ app.bot = botService.bot;
 app.httpServer = new httpServer.Server(httpServerPort);
 
 
+
 function tick() {
     console.log(`Tick (${new Date().toLocaleString()})`);
     let users = app.users;
-    users.forEach(async (user,key) => {
+    users.forEach(async (user, key) => {
         try {
             let oid = app.authManager.jwtForUserAuthKey(user.authKey).oid;
             let accessToken = await app.authManager.accessTokenForAuthKey(user.authKey);
@@ -75,3 +79,9 @@ function tick() {
 }
 
 setInterval(() => tick(), 9 * 1000);
+
+import { MongoClient as mongoClient } from 'mongodb';
+mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, (err, client) => {
+    console.log('mongo connected');
+    client.close();
+});
