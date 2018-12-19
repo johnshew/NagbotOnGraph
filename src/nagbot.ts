@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { default as app } from './app';
+import { UserTracker } from './users';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
@@ -22,11 +23,7 @@ export interface ConversationTracker {
     expiresOn?: Date;
 }
 
-export interface UserTracker {
-    oid?: string;
-    authKey?: string;
-    preferredName?: string;
-}
+
 
 export class NagBot {
     private conversationState: ConversationState;

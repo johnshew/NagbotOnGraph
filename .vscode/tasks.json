@@ -12,25 +12,14 @@
             "runOptions": {
                 "runOn": "folderOpen",
                 "reevaluateOnRerun": true
-            },
-            "group": "build"
+            }
         },
         {
             "type": "npm",
             "script": "build",
             "problemMatcher": [
                 "$tsc-watch"
-            ],
-            "group": "build"
+            ]
         },
-        {
-            "type": "typescript",
-            "tsconfig": "tsconfig.json",
-            "option": "watch",
-            "problemMatcher": [
-                "$tsc-watch"
-            ],
-            "group": "build"
-        }
     ]
 }

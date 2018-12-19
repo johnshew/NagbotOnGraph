@@ -1,13 +1,17 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { MongoClient as mongoClient, MongoClient, Collection } from 'mongodb';
+import { OutlookTask, User } from "@microsoft/microsoft-graph-types-beta";
 
 import * as simpleAuth from './simpleAuth';
 import * as httpServer from './httpServer';
 import * as graphHelper from './graphHelper';
-import { NagBot, UserTracker } from './nagbot';
+import { NagBot } from './nagbot';
+import { UserTracker } from './users';
 import { SimpleBotService } from './simpleBotService';
-import { OutlookTask, User } from "@microsoft/microsoft-graph-types-beta";
 import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
+import { stringify } from 'querystring';
+import { UserState } from 'botbuilder';
 
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
@@ -24,6 +28,34 @@ var authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Ta
 var botLoginUrl = httpServerUrl + '/bot-login'
 var botPort = process.env.botport || process.env.BOTPORT || 3978;
 
+let userTemplate : Map<string,UserTracker>;
+
+class MongoUsersMap {
+    data = new Map<string, UserTracker>();
+
+    constructor(private mongoCollection: Collection<UserTracker>) {
+        this.mongoCollection.find().toArray().then(users => {
+            console.log(`Loaded users: ${JSON.stringify(users)}`);
+            users.forEach(user => { 
+                this.data.set(user.oid, user);
+                app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
+             });
+        });
+    }
+
+    async get(oid: string) { return this.data.get(oid); }
+
+    async set(oid: string, user: UserTracker) {
+        this.data.set(oid, user);
+        let op = await this.mongoCollection.update({ "oid": oid }, user, { upsert: true });
+        console.log(op.result.ok == 1 ? `stored user` : `write failure`);
+    }
+
+    forEach(callback: (value: UserTracker, key: string, map: MongoUsersMap) => void, thisArg?: any) {    
+        this.data.forEach((u,k,m) => { callback(u,k,this); }, thisArg);
+    }
+}
+
 export class AppConfig {
     readonly appId = appId;
     readonly appPassword = appPassword;
@@ -31,11 +63,12 @@ export class AppConfig {
     readonly authUrl = authUrl;
     readonly botLoginUrl = botLoginUrl;
     readonly authDefaultScopes = authDefaultScopes;
-    users = new Map<string, UserTracker>();
+    users?: MongoUsersMap;
     authManager?: simpleAuth.AuthManager;
     graphHelper?: graphHelper.GraphHelper;
     httpServer?: httpServer.Server;
     bot?: NagBot;
+    mongoClient?: MongoClient;
 }
 
 let app = new AppConfig();
@@ -51,6 +84,14 @@ app.bot = botService.bot;
 
 app.httpServer = new httpServer.Server(httpServerPort);
 
+
+mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+    console.log('mongo connected');
+    app.mongoClient = client;
+    let db = app.mongoClient.db('Test');
+    let usersDb = db.collection<UserTracker>('users');
+    app.users = new MongoUsersMap(usersDb);
+});
 
 
 function tick() {
@@ -80,8 +121,4 @@ function tick() {
 
 setInterval(() => tick(), 9 * 1000);
 
-import { MongoClient as mongoClient } from 'mongodb';
-mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, (err, client) => {
-    console.log('mongo connected');
-    client.close();
-});
+

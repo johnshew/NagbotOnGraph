@@ -58,8 +58,8 @@ export class Server extends http.Server {
                 if (code) {
                     let userAuthKey = await authManager.userAuthKeyFromCode(code);
                     let jwt = authManager.jwtForUserAuthKey(userAuthKey);
-                    let users = app.users;
-                    users.set(jwt.oid, { oid: jwt.oid, authKey: userAuthKey });
+                    let authTokens = app.authManager.userAuthKeyToTokensMap.get(userAuthKey);
+                    await app.users.set(jwt.oid, { oid: jwt.oid, authKey: userAuthKey, authTokens : authTokens });
                     res.header('Set-Cookie', 'userId=' + userAuthKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
                     let stateString: string = req.query.state;
                     let state: any = {}

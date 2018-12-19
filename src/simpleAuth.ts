@@ -4,7 +4,7 @@ import { default as fetch } from 'node-fetch';
 import { isDeepStrictEqual } from 'util';
 
 
-class AuthTokens {
+export class AuthTokens {
     auth_secret: string;  // random secret to share with the client.
     access_token: string;
     expires_on: Date;
@@ -27,7 +27,7 @@ class JWT {
 
 export class AuthManager extends EventEmitter {
 
-    private _userAuthKeyToTokensMap = new Map<string, AuthTokens>(); // UserAuthKey to AuthTokens
+    userAuthKeyToTokensMap = new Map<string, AuthTokens>(); // UserAuthKey to AuthTokens
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) { super(); }
 
@@ -71,7 +71,7 @@ export class AuthManager extends EventEmitter {
     }
 
     jwtForUserAuthKey(authKey: string) {
-        let tokens = this._userAuthKeyToTokensMap.get(authKey);
+        let tokens = this.userAuthKeyToTokensMap.get(authKey);
         if (!tokens) return null;
         return <JWT>parseJwt(tokens.id_token);
     }
@@ -79,7 +79,7 @@ export class AuthManager extends EventEmitter {
     async accessTokenForAuthKey(authKey: string, resource?: string) {
         return new Promise<string>(async (resolve, reject) => {
             try {
-                let tokens = this._userAuthKeyToTokensMap.get(authKey);
+                let tokens = this.userAuthKeyToTokensMap.get(authKey);
                 if (!tokens) { return reject('No tokens for user. Not logged in.'); }
                 if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return resolve(tokens.access_token); }
                 if (tokens.refresh_token) {
@@ -97,18 +97,18 @@ export class AuthManager extends EventEmitter {
     }
 
     private getTokensForUserAuthKey(authKey: string): AuthTokens | null {
-        let tokens = this._userAuthKeyToTokensMap.get(authKey);
+        let tokens = this.userAuthKeyToTokensMap.get(authKey);
         if (!tokens) return null;
         return tokens;
     }
 
 
-    private setTokensForUserAuthKey(authSecret: string, value: AuthTokens) {
+    setTokensForUserAuthKey(authSecret: string, value: AuthTokens) {
         if (authSecret !== value.auth_secret) throw new Error('UserAuthSecret does not match');
-        if (isDeepStrictEqual(this._userAuthKeyToTokensMap.get(authSecret), value)) {
+        if (isDeepStrictEqual(this.userAuthKeyToTokensMap.get(authSecret), value)) {
             return
         }
-        this._userAuthKeyToTokensMap.set(authSecret, value);
+        this.userAuthKeyToTokensMap.set(authSecret, value);
         this.emit('refreshed');
     }
 
