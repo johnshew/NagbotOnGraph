@@ -7,11 +7,10 @@ import * as simpleAuth from './simpleAuth';
 import * as httpServer from './httpServer';
 import * as graphHelper from './graphHelper';
 import { NagBot } from './nagbot';
-import { UserTracker } from './users';
+import { AppUser } from './users';
 import { SimpleBotService } from './simpleBotService';
 import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
-import { stringify } from 'querystring';
-import { UserState } from 'botbuilder';
+import { isDeepStrictEqual } from 'util';
 
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
@@ -28,12 +27,11 @@ var authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Ta
 var botLoginUrl = httpServerUrl + '/bot-login'
 var botPort = process.env.botport || process.env.BOTPORT || 3978;
 
-let userTemplate : Map<string,UserTracker>;
 
 class MongoUsersMap {
-    data = new Map<string, UserTracker>();
+    data = new Map<string, AppUser>();
 
-    constructor(private mongoCollection: Collection<UserTracker>) {
+    constructor(private mongoCollection: Collection<AppUser>) {
         this.mongoCollection.find().toArray().then(users => {
             console.log(`Loaded users: ${JSON.stringify(users)}`);
             users.forEach(user => { 
@@ -43,15 +41,16 @@ class MongoUsersMap {
         });
     }
 
-    async get(oid: string) { return this.data.get(oid); }
+    get(oid: string) { return this.data.get(oid); }
 
-    async set(oid: string, user: UserTracker) {
+    async set(oid: string, user: AppUser) {
         this.data.set(oid, user);
         let op = await this.mongoCollection.update({ "oid": oid }, user, { upsert: true });
         console.log(op.result.ok == 1 ? `stored user` : `write failure`);
     }
 
-    forEach(callback: (value: UserTracker, key: string, map: MongoUsersMap) => void, thisArg?: any) {    
+
+    forEach(callback: (value: AppUser, key: string, map: MongoUsersMap) => void, thisArg?: any) {    
         this.data.forEach((u,k,m) => { callback(u,k,this); }, thisArg);
     }
 }
@@ -89,7 +88,7 @@ mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, async (err, 
     console.log('mongo connected');
     app.mongoClient = client;
     let db = app.mongoClient.db('Test');
-    let usersDb = db.collection<UserTracker>('users');
+    let usersDb = db.collection<User>('users');
     app.users = new MongoUsersMap(usersDb);
 });
 

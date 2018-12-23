@@ -1,6 +1,6 @@
 import { AuthTokens } from './simpleAuth';
 
-export interface UserTracker {
+export interface AppUser {
     oid?: string;
     authKey?: string;
     preferredName?: string;

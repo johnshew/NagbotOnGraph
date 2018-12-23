@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 import { default as app } from './app';
-import { UserTracker } from './users';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
@@ -11,6 +10,12 @@ import { randomBytes } from 'crypto';
  * A simple bot that responds to utterances with answers from the Language Understanding (LUIS) service.
  * If an answer is not found for an utterance, the bot responds with help.
  */
+
+
+export interface UserTracker {
+    oid?: string;
+    authKey?: string;
+}
 
 export interface ConversationTracker {
     adapter: BotAdapter;
@@ -144,7 +149,7 @@ export class NagBot {
         });
     }
 
-    async convertTempUserConversationKeyToUser(userConversationKey: string, userOid: string, userAuthManagerKey: string): Promise<ConversationTracker | undefined> {
+    async convertTempUserConversationKeyToUser(userConversationKey: string, userOid: string, authManagerUserKey: string): Promise<ConversationTracker | undefined> {
         let conversation = this.mapOfTempUserConversationKeytoConversation.get(userConversationKey);
         if (conversation) {
             // Remove ephemeral UserConversationKey to conversation from Map.
@@ -153,7 +158,7 @@ export class NagBot {
             // Update conversation state
             delete conversation.tempUserConversationKey;
             conversation.userOid = userOid;
-            conversation.userAuthKey = userAuthManagerKey;
+            conversation.userAuthKey = authManagerUserKey;
             // !To Do - where to handle verification
 
             // Store the conversation in the Oid Set.
