@@ -19,21 +19,21 @@
 
 # Work Items
 
-* P1 - api/v1.0/tasks/id - returns json for task - done
+* P1 - api/v1.0/tasks/id - returns json for task - (done)
 
-* P1 -  for "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time.
+* P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time. (close)
 
-* P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id.  
+* P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id and show UX on that task.
 
-  * P3 - Alternatively consider having these count as a login on that task and expiring them after say a day.  But if you are logged in - which you would be on your phone - then no big deal. 
+* P2 - Edit task/id.
 
-* P2 - Store userKey to oid map more persistently.
-
-* P2 - Show/Edit task/id P3 - Have a way show all tasks to mark requests as Naggable - for now use Category.
+* P2 - Store userKey to oid map more persistently. (done)
 
 * P2 - Host in the cloud.
 
-* P3 - Nag Policy - use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
+* P3 - Have a way show all tasks to mark requests as Naggable - for now use Category.
+
+* P3 - Multiple Nag Policies. Maybe use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
 
 # Interesting
 
@@ -46,6 +46,7 @@
 * UX.  Need one.  Wonder about resurrecting the React Office work.
 * UX and data model.  Would be nice to have auto-updating local data - Graph delta queries?  Simplest in the short term is just to get JSON data structures every time.
 * Easy signin. With the new URL approach pretty easy to create a URL with a short temp user key along with a shortened URL to signin and connect it.  Later could also send a QR code so no typing required on a mobile phone.  The mobile device is likely logged in or has password stored.
+* Consider having links that count as a login on that task and expiring them after say a day.  But if you are logged in - which you would be on your phone - then no big deal. 
 
 
 # Extensions
