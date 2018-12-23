@@ -2,8 +2,8 @@ import { default as fetch } from 'node-fetch';
 
 export class GraphHelper { 
 
-    public async get(accessToken: string, url: string): Promise<any> {
-        return new Promise<void>(async (resolve, reject) => {
+    public async get<T>(accessToken: string, url: string): Promise<T> {
+        return new Promise<T>(async (resolve, reject) => {
             let response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -17,7 +17,6 @@ export class GraphHelper {
             return reject(response.status);
         });
     }
-
 
     public async patch(accessToken: string, url: string, body: any): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {

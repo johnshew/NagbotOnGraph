@@ -101,14 +101,14 @@ function tick() {
             let oid = app.authManager.jwtForUserAuthKey(user.authKey).oid;
             let accessToken = await app.authManager.accessTokenForAuthKey(user.authKey);
             console.log(`User: ${oid}`);
-            let tasks = await app.graphHelper.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
-            if (tasks && tasks.value) tasks.value.forEach((task: OutlookTask) => {
+            let tasks = await app.graphHelper.get<{value: [OutlookTask]}>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
+            if (tasks && tasks.value) tasks.value.forEach((task) => {
                 console.log(`${task.subject} ${task.dueDateTime && task.dueDateTime.dateTime}`);
                 let conversations = app.bot.findAllConversations(oid);
                 if (conversations) conversations.forEach(async c => {
                     await app.bot.processActivityInConversation(c, async turnContext => {
                         await turnContext.sendActivity('You should take care of ' + task.subject);
-                    });
+                    }); 
                 });
             });
         }

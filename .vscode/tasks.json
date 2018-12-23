@@ -18,8 +18,8 @@
             "type": "npm",
             "script": "build",
             "problemMatcher": [
-                "$tsc-watch"
-            ]
-        },
+                "$tsc"
+            ],
+        }
     ]
 }

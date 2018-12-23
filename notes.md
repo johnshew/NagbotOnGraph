@@ -21,7 +21,7 @@
 
 * P1 - api/v1.0/tasks/id - returns json for task - (done)
 
-* P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time. (close)
+* P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time. (almost done)
 
 * P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id and show UX on that task.
 
@@ -31,7 +31,9 @@
 
 * P2 - Host in the cloud.
 
-* P3 - Have a way show all tasks to mark requests as Naggable - for now use Category.
+* P3 - Factored interfaces for User. (done)
+
+* P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
 
 * P3 - Multiple Nag Policies. Maybe use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
 
