@@ -19,6 +19,8 @@
 
 # Work Items
 
+* P0 - for a given user, store their channels in an open extension.
+
 * P1 - api/v1.0/tasks/id - returns json for task - (done)
 
 * P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time. (almost done)

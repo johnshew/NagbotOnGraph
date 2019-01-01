@@ -197,12 +197,6 @@ export class NagBot {
 
 }
 
-
-async function sleep(milliseconds : number) {
-    return new Promise<void>(resolve => setTimeout(resolve, milliseconds));
-}
-
-
 function generateSecretKey(length: number = 16): string {
     let buf = randomBytes(length);
     return buf.toString('hex');
