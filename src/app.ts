@@ -34,10 +34,10 @@ class MongoUsersMap {
     constructor(private mongoCollection: Collection<AppUser>) {
         this.mongoCollection.find().toArray().then(users => {
             console.log(`Loaded users: ${JSON.stringify(users)}`);
-            users.forEach(user => { 
+            users.forEach(user => {
                 this.data.set(user.oid, user);
                 app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
-             });
+            });
         });
     }
 
@@ -50,8 +50,8 @@ class MongoUsersMap {
     }
 
 
-    forEach(callback: (value: AppUser, key: string, map: MongoUsersMap) => void, thisArg?: any) {    
-        this.data.forEach((u,k,m) => { callback(u,k,this); }, thisArg);
+    forEach(callback: (value: AppUser, key: string, map: MongoUsersMap) => void, thisArg?: any) {
+        this.data.forEach((u, k, m) => { callback(u, k, this); }, thisArg);
     }
 }
 
@@ -83,14 +83,16 @@ app.bot = botService.bot;
 
 app.httpServer = new httpServer.Server(httpServerPort);
 
+if (app.mongoConnection) {
+    mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+        console.log('mongo connected');
+        app.mongoClient = client;
+        let db = app.mongoClient.db('Test');
+        let usersDb = db.collection<User>('users');
+        app.users = new MongoUsersMap(usersDb);
+    });
+}
 
-mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
-    console.log('mongo connected');
-    app.mongoClient = client;
-    let db = app.mongoClient.db('Test');
-    let usersDb = db.collection<User>('users');
-    app.users = new MongoUsersMap(usersDb);
-});
 
 
 function tick() {
@@ -101,14 +103,14 @@ function tick() {
             let oid = app.authManager.jwtForUserAuthKey(user.authKey).oid;
             let accessToken = await app.authManager.accessTokenForAuthKey(user.authKey);
             console.log(`User: ${oid}`);
-            let tasks = await app.graphHelper.get<{value: [OutlookTask]}>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
+            let tasks = await app.graphHelper.get<{ value: [OutlookTask] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
             if (tasks && tasks.value) tasks.value.forEach((task) => {
                 console.log(`${task.subject} ${task.dueDateTime && task.dueDateTime.dateTime}`);
                 let conversations = app.bot.findAllConversations(oid);
                 if (conversations) conversations.forEach(async c => {
                     await app.bot.processActivityInConversation(c, async turnContext => {
                         await turnContext.sendActivity('You should take care of ' + task.subject);
-                    }); 
+                    });
                 });
             });
         }

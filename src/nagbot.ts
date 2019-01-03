@@ -194,7 +194,6 @@ export class NagBot {
         conversation.tempUserConversationKey = userConversationKey,
             this.mapOfTempUserConversationKeytoConversation.set(conversation.tempUserConversationKey, conversation);
     }
-
 }
 
 function generateSecretKey(length: number = 16): string {

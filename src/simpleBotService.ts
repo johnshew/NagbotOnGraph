@@ -1,7 +1,6 @@
 import { default as app } from './app';
-import { NagBot } from './nagbot';
 import * as restify from 'restify';
-import { Storage, BotFrameworkAdapter, MemoryStorage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
+import { Storage, BotFrameworkAdapter, MemoryStorage,  TurnContext } from 'botbuilder';
 
 interface BotInterface {
     onTurn(turnContent: TurnContext) : void;

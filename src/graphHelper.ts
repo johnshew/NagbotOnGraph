@@ -1,4 +1,5 @@
 import { default as fetch } from 'node-fetch';
+import { SSL_OP_ALL } from 'constants';
 
 export class GraphHelper { 
 
@@ -27,7 +28,7 @@ export class GraphHelper {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + accessToken
                 },
-                body: body
+                body: JSON.stringify( body)
             }
             let response = await fetch(url, options);
             if (response.status == 200 || response.status == 204) {
