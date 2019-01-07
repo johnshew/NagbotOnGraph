@@ -6,11 +6,12 @@ import { OutlookTask, User } from "@microsoft/microsoft-graph-types-beta";
 import * as simpleAuth from './simpleAuth';
 import * as httpServer from './httpServer';
 import * as graphHelper from './graphHelper';
-import { NagBot } from './nagbot';
+import { NagBot, ConversationManager } from './nagbot';
 import { AppUser } from './users';
-import { SimpleBotService } from './simpleBotService';
+import { NagBotService } from './simpleBotService';
 import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
 import { isDeepStrictEqual } from 'util';
+import { BotAdapter } from 'botbuilder';
 
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
@@ -66,7 +67,9 @@ export class AppConfig {
     authManager?: simpleAuth.AuthManager;
     graphHelper?: graphHelper.GraphHelper;
     httpServer?: httpServer.Server;
+    adapter? : BotAdapter;
     bot?: NagBot;
+    conversationManager? : ConversationManager;
     mongoClient?: MongoClient;
 }
 
@@ -78,8 +81,11 @@ app.graphHelper = new graphHelper.GraphHelper();
 app.authManager = new simpleAuth.AuthManager(app.appId, app.appPassword, app.authUrl, app.authDefaultScopes);
 app.authManager.on('refreshed', () => console.log('refreshed'))
 
-const botService = new SimpleBotService(NagBot, app.appId, app.appPassword, botPort);
+
+const botService = new NagBotService(app.appId, app.appPassword, botPort);
 app.bot = botService.bot;
+app.conversationManager = botService.conversationManager;
+app.adapter = botService.adapter;
 
 app.httpServer = new httpServer.Server(httpServerPort);
 
@@ -106,9 +112,9 @@ function tick() {
             let tasks = await app.graphHelper.get<{ value: [OutlookTask] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
             if (tasks && tasks.value) tasks.value.forEach((task) => {
                 console.log(`${task.subject} ${task.dueDateTime && task.dueDateTime.dateTime}`);
-                let conversations = app.bot.findAllConversations(oid);
+                let conversations = app.conversationManager.findAllConversations(oid);
                 if (conversations) conversations.forEach(async c => {
-                    await app.bot.processActivityInConversation(c, async turnContext => {
+                    await app.conversationManager.processActivityInConversation(app.adapter, c, async turnContext => {
                         await turnContext.sendActivity('You should take care of ' + task.subject);
                     });
                 });

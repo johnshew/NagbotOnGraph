@@ -17,6 +17,7 @@ export class Server extends http.Server {
         let authManager = app.authManager;
         let graphHelper = app.graphHelper;
         let bot = app.bot;
+        
 
         httpServer.pre((req, res, next) => {
             res.header("Access-Control-Allow-Origin", "*");
@@ -68,8 +69,8 @@ export class Server extends http.Server {
                     if (state.key) {
                         // should send verification code to user via web and wait for it on the bot.
                         // ignore for now.
-                        let conversation = await app.bot.convertTempUserConversationKeyToUser(state.key, jwt.oid, userAuthKey);
-                        await app.bot.processActivityInConversation(conversation, async (turnContext) => {
+                        let conversation = await app.conversationManager.setOidForConversation(state.key, jwt.oid);
+                        await app.conversationManager.processActivityInConversation(app.adapter, conversation, async (turnContext) => {
                             return await turnContext.sendActivity('Got your web connections.');
                         });
                     }
@@ -162,9 +163,9 @@ export class Server extends http.Server {
             let errorMessage: string | null = null;
             try {
                 let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
-                let conversations = bot.findAllConversations(jwt.oid);
+                let conversations = app.conversationManager.findAllConversations(jwt.oid);
                 conversations.forEach(async c => {
-                    await bot.processActivityInConversation(c, async turnContext => {
+                    await app.conversationManager.processActivityInConversation(app.adapter, c, async turnContext => {
                         await turnContext.sendActivity('Notification');
                     });
                 });

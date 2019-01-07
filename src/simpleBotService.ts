@@ -1,20 +1,23 @@
 import { default as app } from './app';
 import * as restify from 'restify';
 import { Storage, BotFrameworkAdapter, MemoryStorage,  TurnContext } from 'botbuilder';
+import { NagBot, ConversationManager } from './nagbot';
 
 interface BotInterface {
     onTurn(turnContent: TurnContext) : void;
 };
 
-export class SimpleBotService<Bot extends BotInterface> {
-    public bot: Bot;
+export class NagBotService {
+    public bot: NagBot;
     public storage: Storage;
+    public conversationManager : ConversationManager;
     public adapter: BotFrameworkAdapter;
     public httpServer: restify.Server;
 
-    constructor(botConstructor: { new(store : Storage): Bot }, appId: string, appPassword : string, port: string | number) {
+    constructor(appId: string, appPassword : string, port: string | number) {
         this.storage = new MemoryStorage();
-
+        this.conversationManager = new ConversationManager();
+        
         this.adapter = new BotFrameworkAdapter({ appId: app.appId, appPassword: app.appPassword });
 
         // Catch-all for errors.
@@ -23,7 +26,7 @@ export class SimpleBotService<Bot extends BotInterface> {
             await turnContext.sendActivity(`Oops. Something went wrong!`);
         };
         try {
-            this.bot = new botConstructor(this.storage);
+            this.bot = new NagBot ({ store: this.storage, conversationManager : this.conversationManager});
         } catch (err) {
             console.error(`[botInitializationError]: ${err}`);
             process.exit();
