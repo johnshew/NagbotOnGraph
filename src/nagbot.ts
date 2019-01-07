@@ -6,6 +6,8 @@ import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
 
+
+
 /**
  * A simple bot that responds to utterances with answers from the Language Understanding (LUIS) service.
  * If an answer is not found for an utterance, the bot responds with help.
@@ -18,6 +20,7 @@ export interface UserTracker {
 }
 
 export interface ConversationTracker {
+    id : string;
     adapter: BotAdapter;
     reference: Partial<ConversationReference>;
     tempUserConversationKey?: string // locally generated for purposes of verifying no "man in the middle" on the bot.
@@ -28,6 +31,94 @@ export interface ConversationTracker {
     expiresOn?: Date;
 }
 
+
+export interface ConversationManagerOptions {
+    save: (conversationId: string) => Promise<void>;
+
+
+}
+/* 
+
+The conversation manager maintains two systems... depending on whether or not it has an autheticated user.
+
+If the user is authenticated then given an oid the conversation manager can get the userAuthKey and then use the 
+
+*/
+
+export class ConversationManager {
+
+    private mapOfTempUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
+    private mapOfUserOidToConversations = new Map<string, Set<ConversationTracker>>(); // all known conversations associated with a user as identified by their Auth2 oid.
+
+    constructor() { }
+
+    findAllConversations(oid: string): ConversationTracker[] {
+        let conversations = this.mapOfUserOidToConversations.get(oid);
+        return (conversations) ? Array.from(conversations) : [];
+    }
+
+    create(adapter: BotAdapter, reference: ConversationReference): ConversationTracker {
+        return { id : uuid(), adapter: adapter, reference: reference };
+    }
+
+    async processActivityInConversation(conversation: ConversationTracker, logic: (turnContext: TurnContext) => Promise<any>) {
+        try {
+            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
+                return await logic(turnContext);
+            });
+        } catch (err) {
+            console.log('problem running activity in conversation.');
+            throw err;
+        }
+    }
+
+    async convertTempUserConversationKeyToUser(userConversationKey: string, userOid: string, authManagerUserKey: string): Promise<ConversationTracker | undefined> {
+        let conversation = this.mapOfTempUserConversationKeytoConversation.get(userConversationKey);
+        if (conversation) {
+            // Remove ephemeral UserConversationKey to conversation from Map.
+            this.mapOfTempUserConversationKeytoConversation.delete(userConversationKey);  // no longer used
+
+            // Update conversation state
+            delete conversation.tempUserConversationKey;
+            conversation.userOid = userOid;
+            conversation.userAuthKey = authManagerUserKey;
+            // !To Do - where to handle verification
+
+            // Store the conversation in the Oid Set.
+            this.addConversationToOidSet(userOid, conversation);
+
+            await this.storeConversation(conversation);
+
+            // Store the updated user
+            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
+                let userData = await this.userAccessor.get(turnContext, {});
+                userData.oid = conversation.userOid;
+                userData.authKey = conversation.userAuthKey;
+                await this.userAccessor.set(turnContext, userData);
+                await this.userState.saveChanges(turnContext);
+            });
+            return conversation;
+        }
+        return undefined;
+    }
+
+    private addConversationToOidSet(oid: string, conversation: ConversationTracker) {
+        // force conversation to contain the oid.
+        conversation.userOid = oid;
+        let conversations = this.mapOfUserOidToConversations.get(oid);
+        if (!conversations) { conversations = new Set<ConversationTracker>(); }
+        conversations.add(conversation);
+        this.mapOfUserOidToConversations.set(oid, conversations);
+    }
+
+    private async prepConversationForLogin(conversation: ConversationTracker) {
+        if (conversation && conversation.userOid && conversation.userAuthKey) throw 'bad convesation in login prep';
+        let userConversationKey = generateSecretKey(8);
+        conversation.tempUserConversationKey = userConversationKey,
+            this.mapOfTempUserConversationKeytoConversation.set(conversation.tempUserConversationKey, conversation);
+    }
+
+}
 
 
 export class NagBot {
@@ -125,7 +216,7 @@ export class NagBot {
         return (conversations) ? Array.from(conversations) : [];
     }
 
-    async processActivityInConversation(conversation: ConversationTracker, logic: (turnContext : TurnContext) => Promise<any>) {
+    async processActivityInConversation(conversation: ConversationTracker, logic: (turnContext: TurnContext) => Promise<any>) {
         try {
             await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                 return await logic(turnContext);
@@ -141,7 +232,7 @@ export class NagBot {
             try {
                 await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
                     await this.conversationAccessor.set(turnContext, conversation);
-                    return resolve(await this.conversationState.saveChanges(turnContext));  
+                    return resolve(await this.conversationState.saveChanges(turnContext));
                 });
             } catch (err) {
                 reject("Couldn't write state for converation");
