@@ -6,6 +6,8 @@ import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
 import { stringify } from 'querystring';
+import { EventEmitter } from 'events';
+import { emit, on } from 'cluster';
 
 
 
@@ -13,19 +15,6 @@ import { stringify } from 'querystring';
  * A simple bot that responds to utterances with answers from the Language Understanding (LUIS) service.
  * If an answer is not found for an utterance, the bot responds with help.
  */
-
-
-export interface UserTracker {
-    oid?: string;
-    authKey?: string;
-}
-
-export interface ConversationTracker {
-    adapter: BotAdapter;
-    reference: Partial<ConversationReference>;
-    oid?: string // from Oauth - uniquely identifies this user - and is used to find conversations.
-    expiresOn?: Date;
-}
 
 
 export interface ConversationManagerOptions {
@@ -41,40 +30,41 @@ If the user is authenticated then given an oid the conversation manager can get 
 
 */
 
-export class ConversationManager {
+export class ConversationManager extends EventEmitter {
 
     // Need to expire things.  Today this just grows.
 
-    private conversationsByUser = new Map<string, Map<string,Partial<ConversationReference>>>(); // all known conversations associated with a user as identified by their Auth2 oid.
-    private conversationsByTempKey = new Map<string, Partial<ConversationReference>>();    
+    private conversationsByUser = new Map<string, Map<string, Partial<ConversationReference>>>(); // all known conversations associated with a user as identified by their Auth2 oid.
+    private conversationsByTempKey = new Map<string, Partial<ConversationReference>>();
 
-    constructor() { }
+    constructor() { super(); }
 
     findAllConversations(oid: string): Partial<ConversationReference>[] {
         let conversations = this.conversationsByUser.get(oid);
-        return (conversations) ? [... conversations.values() ] : [];
+        return (conversations) ? [...conversations.values()] : [];
     }
 
-    updateConversationsByUser(oid : string, conversation : Partial<ConversationReference>) {
-        if (!oid)  throw 'oid cannot be null'
+    updateConversationsByUser(oid: string, conversation: Partial<ConversationReference>) {
+        if (!oid) throw 'oid cannot be null'
         let conversations = this.conversationsByUser.get(oid) || new Map<string, Partial<ConversationReference>>();
         conversations.set(conversation.conversation.id, conversation);
+        this.emit('updated',oid, conversation);
     }
 
-    updateConversationByTempKey(tempKey: string, conversation : Partial<ConversationReference>) {
+    updateConversationByTempKey(tempKey: string, conversation: Partial<ConversationReference>) {
         if (!tempKey) throw 'tempKey can not be null';
         this.conversationsByTempKey.set(tempKey, conversation);
     }
 
-    setOidForConversation(tempKey: string, oid : string) {
+    setOidForConversation(tempKey: string, oid: string) {
         let conversation = this.conversationsByTempKey.get(tempKey);
         this.conversationsByTempKey.delete(tempKey);
         this.updateConversationsByUser(oid, conversation);
         return conversation;
-        
+
     }
-    
-    async processActivityInConversation(adapter : BotAdapter, conversation: Partial<ConversationReference>, logic: (turnContext: TurnContext) => Promise<any>) {
+
+    async processActivityInConversation(adapter: BotAdapter, conversation: Partial<ConversationReference>, logic: (turnContext: TurnContext) => Promise<any>) {
         try {
             await adapter.continueConversation(conversation, async (turnContext) => {
                 return await logic(turnContext);
@@ -84,31 +74,44 @@ export class ConversationManager {
             throw err;
         }
     }
-    
+
 }
 
-class ConversationStatus 
-{
-    oid : string = null;
-    tempVerficationKey : string = null;
+export declare interface ConversationManager {
+    on(event: 'updated', listener: (oid : string, conversation : Partial<ConversationReference>) => void): this;
+    emit(event: 'updated', oid : string, conversation: Partial<ConversationReference>): boolean
+    // on(event: string, listener: Function): this;
+    // emit(event: string | symbol, ...args : any[]) : boolean;
 }
 
+
+export interface UserStatus {
+    oid?: string;
+    authKey?: string;
+}
+
+
+class ConversationStatus {
+    oid: string = null;
+    tempVerficationKey: string = null;
+}
 
 export interface NagBotConfig {
-    store : Storage;
-    conversationManager : ConversationManager;
+    store: Storage;
+    conversationManager: ConversationManager;
 }
 
 export class NagBot {
     private userState: UserState;
-    private userAccessor: StatePropertyAccessor<UserTracker>;
+    private userAccessor: StatePropertyAccessor<UserStatus>;
     private conversationState: ConversationState;
     private conversationAccessor: StatePropertyAccessor<ConversationStatus>;
-    
-    private store : Storage;
-    private conversationManager : ConversationManager;
-    constructor(config : NagBotConfig) {
-        if (!config || !config.store || !config.conversationManager ) throw 'Missing config members needed for NagBot constructor';
+
+    private store: Storage;
+    private conversationManager: ConversationManager;
+
+    constructor(config: NagBotConfig) {
+        if (!config || !config.store || !config.conversationManager) throw 'Missing config members needed for NagBot constructor';
         this.store = config.store;
         this.conversationManager = config.conversationManager;
 
@@ -117,18 +120,8 @@ export class NagBot {
 
         // Create the state property accessors for the conversation data and user profile.
         this.conversationAccessor = this.conversationState.createProperty<ConversationStatus>('conversationData');
-        this.userAccessor = this.userState.createProperty<UserTracker>('userData');
+        this.userAccessor = this.userState.createProperty<UserStatus>('userData');
     }
-
-    // The following two maps duplicate bot state in memory - current bot state primitives don't enable iteration to find the data.  
-    // Instead of duplicating the entire tracker we could store a key to adapter/conversationReference that would enable the creation of turnContext which could then be used get/set the data.
-    // Perhaps a better alternative is to add this key mapping to a wrapper around any given storage object - so access stores the mapping.
-    // Keeping it simple for now and just duplicating.
-
-/*
-    private mapOfTempUserConversationKeytoConversation = new Map<string, ConversationTracker>();  // only one of these per magic connection.  Ephemeral
-    private mapOfUserOidToConversations = new Map<string, Set<ConversationTracker>>(); // all known conversations associated with a user as identified by their Auth2 oid.
-*/
 
     /**
      * Every conversation turn calls this method.
@@ -145,7 +138,7 @@ export class NagBot {
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
-        
+
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {
@@ -164,7 +157,7 @@ export class NagBot {
                             await turnContext.sendActivity('No sign in currently allowed in group conversations');
                             return;
                         }
-                        // await this.prepConversationForLogin(conversation);
+
                         conversation.tempVerficationKey = generateSecretKey();
                         this.conversationManager.updateConversationByTempKey(conversation.tempVerficationKey, TurnContext.getConversationReference(activity));
                         // await this.conversationAccessor.set(turnContext, conversation);
@@ -205,79 +198,6 @@ export class NagBot {
                 break;
         }
     }
-
-/*
-
-    async processActivityInConversation(conversation: ConversationTracker, logic: (turnContext: TurnContext) => Promise<any>) {
-        try {
-            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
-                return await logic(turnContext);
-            });
-        } catch (err) {
-            console.log('problem running activity in conversation.');
-            throw err;
-        }
-    }
-
-    async storeConversation(conversation: ConversationState) {
-        return new Promise<void>(async (resolve, reject) => {
-            try {
-                await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
-                    await this.conversationAccessor.set(turnContext, conversation);
-                    return resolve(await this.conversationState.saveChanges(turnContext));
-                });
-            } catch (err) {
-                reject("Couldn't write state for converation");
-            }
-        });
-    }
-
-    async convertTempUserConversationKeyToUser(userConversationKey: string, userOid: string, authManagerUserKey: string): Promise<ConversationTracker | undefined> {
-        let conversation = this.mapOfTempUserConversationKeytoConversation.get(userConversationKey);
-        if (conversation) {
-            // Remove ephemeral UserConversationKey to conversation from Map.
-            this.mapOfTempUserConversationKeytoConversation.delete(userConversationKey);  // no longer used
-
-            // Update conversation state
-            delete conversation.tempUserConversationKey;
-            conversation.userOid = userOid;
-            conversation.userAuthKey = authManagerUserKey;
-            // !To Do - where to handle verification
-
-            // Store the conversation in the Oid Set.
-            this.addConversationToOidSet(userOid, conversation);
-
-            await this.storeConversation(conversation);
-
-            // Store the updated user
-            await conversation.adapter.continueConversation(conversation.reference, async (turnContext) => {
-                let userData = await this.userAccessor.get(turnContext, {});
-                userData.oid = conversation.userOid;
-                userData.authKey = conversation.userAuthKey;
-                await this.userAccessor.set(turnContext, userData);
-                await this.userState.saveChanges(turnContext);
-            });
-            return conversation;
-        }
-        return undefined;
-    }
-
-    private addConversationToOidSet(oid: string, conversation: ConversationTracker) {
-        // force conversation to contain the oid.
-        conversation.userOid = oid;
-        let conversations = this.mapOfUserOidToConversations.get(oid);
-        if (!conversations) { conversations = new Set<ConversationTracker>(); }
-        conversations.add(conversation);
-        this.mapOfUserOidToConversations.set(oid, conversations);
-    }
-
-    private async prepConversationForLogin(conversation: ConversationTracker) {
-        if (conversation && conversation.userOid && conversation.userAuthKey) throw 'bad convesation in login prep';
-        let userConversationKey = generateSecretKey(8);
-        conversation.tempUserConversationKey = userConversationKey,
-            this.mapOfTempUserConversationKeytoConversation.set(conversation.tempUserConversationKey, conversation);
-    }
-    */
 }
 
 function generateSecretKey(length: number = 16): string {

@@ -9,8 +9,7 @@ import * as graphHelper from './graphHelper';
 import { NagBot, ConversationManager } from './nagbot';
 import { AppUser } from './users';
 import { NagBotService } from './simpleBotService';
-import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
-import { isDeepStrictEqual } from 'util';
+import { nagExpand, nagFilterNotCompletedAndNagMeCategory, StoreConversation } from './nagGraph';
 import { BotAdapter } from 'botbuilder';
 
 const ENV_FILE = path.join(__dirname, '../.env');
@@ -85,6 +84,7 @@ app.authManager.on('refreshed', () => console.log('refreshed'))
 const botService = new NagBotService(app.appId, app.appPassword, botPort);
 app.bot = botService.bot;
 app.conversationManager = botService.conversationManager;
+app.conversationManager.on('updated', (oid, conversation) => StoreConversation(oid,conversation));
 app.adapter = botService.adapter;
 
 app.httpServer = new httpServer.Server(httpServerPort);

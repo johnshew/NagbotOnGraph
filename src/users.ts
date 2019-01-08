@@ -1,7 +1,7 @@
 import { AuthTokens } from './simpleAuth';
-import { UserTracker } from './nagbot';
+import { UserStatus } from './nagbot';
 
-export interface AppUser extends UserTracker {
+export interface AppUser extends UserStatus {
     oid?: string;
     authKey?: string;
     preferredName?: string;
