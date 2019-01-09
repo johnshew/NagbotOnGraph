@@ -3,11 +3,12 @@
 
 import { default as app } from './app';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
-import { Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
+import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
 import { stringify } from 'querystring';
 import { EventEmitter } from 'events';
 import { emit, on } from 'cluster';
+import { sign } from 'jsonwebtoken';
 
 
 
@@ -48,6 +49,7 @@ export class ConversationManager extends EventEmitter {
         if (!oid) throw 'oid cannot be null'
         let conversations = this.conversationsByUser.get(oid) || new Map<string, Partial<ConversationReference>>();
         conversations.set(conversation.conversation.id, conversation);
+        this.conversationsByUser.set(oid,conversations);
         this.emit('updated',oid, conversation);
     }
 
@@ -163,7 +165,13 @@ export class NagBot {
                         // await this.conversationAccessor.set(turnContext, conversation);
                         // await this.conversationState.saveChanges(turnContext);
 
-                        let signinCardAttachment = CardFactory.signinCard('Nagbot Login', `${app.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click above to sign in.');
+                        let signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${app.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
+                        
+                        if (turnContext.activity.channelId == 'msteams') {
+                            // hack to fix teams.
+                            signinCardAttachment.content.buttons[0].type = ActionTypes.OpenUrl;
+                        }
+    
                         console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
                         await turnContext.sendActivity({ attachments: [signinCardAttachment] });
                         return;

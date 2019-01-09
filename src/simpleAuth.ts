@@ -10,6 +10,7 @@ export class AuthTokens {
     expires_on: Date;
     refresh_token: string;
     id_token: string;
+    oid: string;
 
     constructor(data: any) {
         if (!data.access_token || !data.expires_on || !data.id_token || !data.refresh_token || !data.auth_secret) throw new Error('Missing values for AuthToken');
@@ -18,6 +19,7 @@ export class AuthTokens {
         this.id_token = data.id_token;
         this.refresh_token = data.refresh_token;
         this.expires_on = data.expires_on;
+        this.oid = parseJwt(this.id_token).oid;
     }
 }
 
@@ -70,10 +72,10 @@ export class AuthManager extends EventEmitter {
         });
     }
 
-    jwtForUserAuthKey(authKey: string) {
+    jwtForUserAuthKey(authKey: string): JWT {
         let tokens = this.userAuthKeyToTokensMap.get(authKey);
         if (!tokens) return null;
-        return <JWT>parseJwt(tokens.id_token);
+        return parseJwt(tokens.id_token);
     }
 
     async accessTokenForAuthKey(authKey: string, resource?: string) {
@@ -90,6 +92,18 @@ export class AuthManager extends EventEmitter {
             }
             catch (err) { return reject('Could not get access token.  Reason: ' + err) }
         })
+    }
+
+    async accessTokenForOid(oid: string) {
+        for (const tokens of this.userAuthKeyToTokensMap.values()) {
+            if (tokens.oid == oid) {
+                if (tokens.access_token && tokens.expires_on && tokens.expires_on.valueOf() > Date.now()) { return tokens.access_token; }
+                if (tokens.refresh_token) {
+                    return (await this.getRefreshTokens(tokens)).access_token;
+                }
+            }
+        }
+        return null;
     }
 
     addScopes(scopes: string[]) {
@@ -113,11 +127,17 @@ export class AuthManager extends EventEmitter {
     }
 
     // updates access token using refresh token
+
     private async refreshTokens(authSecret: string): Promise<AuthTokens> {
+        let tokens = this.getTokensForUserAuthKey(authSecret);
+        if (!tokens) throw ('No token for that authSecret.');
+        return this.getRefreshTokens(tokens)
+
+    }
+
+    private async getRefreshTokens(tokens: AuthTokens): Promise<AuthTokens> {
         return new Promise<AuthTokens>(async (resolve, reject) => {
             try {
-                let tokens = this.getTokensForUserAuthKey(authSecret);
-                if (!tokens) return reject('No token for that authSecret.');
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
                 body += `&refresh_token=${tokens.refresh_token}`;
@@ -154,7 +174,7 @@ export declare interface AuthManager {
     // emit(event: string | symbol, ...args : any[]) : boolean;
 }
 
-function parseJwt(token : string) {
+function parseJwt(token: string): JWT {
     var base64Url = token.split('.')[1];
     var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     return JSON.parse(Buffer.from(base64, 'base64').toString());

@@ -71,7 +71,7 @@ export class Server extends http.Server {
                         // ignore for now.
                         let conversation = await app.conversationManager.setOidForConversation(state.key, jwt.oid);
                         await app.conversationManager.processActivityInConversation(app.adapter, conversation, async (turnContext) => {
-                            return await turnContext.sendActivity('Got your web connections.');
+                            return await turnContext.sendActivity('Got your web connection.');
                         });
                     }
                     res.redirect(state.url, next);
@@ -170,7 +170,7 @@ export class Server extends http.Server {
                     });
                 });
                 res.header('Content-Type', 'text/html');
-                res.end(`<html><head></head><body><p>User updated</p><a href="/">Continue</a></body></html>`);
+                res.end(`<html><head></head><body><p>Notified</p><a href="/">Continue</a></body></html>`);
                 return next();
             }
             catch (err) { }
