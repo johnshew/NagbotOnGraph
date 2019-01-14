@@ -5,93 +5,14 @@ import { default as app } from './app';
 import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
 import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
-import { stringify } from 'querystring';
-import { EventEmitter } from 'events';
-import { emit, on } from 'cluster';
-import { sign } from 'jsonwebtoken';
+import { ConversationManager} from './conversationManager';
 
-
-
-/**
- * A simple bot that responds to utterances with answers from the Language Understanding (LUIS) service.
- * If an answer is not found for an utterance, the bot responds with help.
- */
-
-
-export interface ConversationManagerOptions {
-    save: (conversationId: string) => Promise<void>;
-
-
-}
-/* 
-
-The conversation manager maintains two systems... depending on whether or not it has an autheticated user.
-
-If the user is authenticated then given an oid the conversation manager can get the userAuthKey and then use the 
-
-*/
-
-export class ConversationManager extends EventEmitter {
-
-    // Need to expire things.  Today this just grows.
-
-    private conversationsByUser = new Map<string, Map<string, Partial<ConversationReference>>>(); // all known conversations associated with a user as identified by their Auth2 oid.
-    private conversationsByTempKey = new Map<string, Partial<ConversationReference>>();
-
-    constructor() { super(); }
-
-    findAllConversations(oid: string): Partial<ConversationReference>[] {
-        let conversations = this.conversationsByUser.get(oid);
-        return (conversations) ? [...conversations.values()] : [];
-    }
-
-    updateConversationsByUser(oid: string, conversation: Partial<ConversationReference>) {
-        if (!oid) throw 'oid cannot be null'
-        let conversations = this.conversationsByUser.get(oid) || new Map<string, Partial<ConversationReference>>();
-        conversations.set(conversation.conversation.id, conversation);
-        this.conversationsByUser.set(oid,conversations);
-        this.emit('updated',oid, conversation);
-    }
-
-    updateConversationByTempKey(tempKey: string, conversation: Partial<ConversationReference>) {
-        if (!tempKey) throw 'tempKey can not be null';
-        this.conversationsByTempKey.set(tempKey, conversation);
-    }
-
-    setOidForConversation(tempKey: string, oid: string) {
-        let conversation = this.conversationsByTempKey.get(tempKey);
-        this.conversationsByTempKey.delete(tempKey);
-        this.updateConversationsByUser(oid, conversation);
-        return conversation;
-
-    }
-
-    async processActivityInConversation(adapter: BotAdapter, conversation: Partial<ConversationReference>, logic: (turnContext: TurnContext) => Promise<any>) {
-        try {
-            await adapter.continueConversation(conversation, async (turnContext) => {
-                return await logic(turnContext);
-            });
-        } catch (err) {
-            console.log('problem running activity in conversation.');
-            throw err;
-        }
-    }
-
-}
-
-export declare interface ConversationManager {
-    on(event: 'updated', listener: (oid : string, conversation : Partial<ConversationReference>) => void): this;
-    emit(event: 'updated', oid : string, conversation: Partial<ConversationReference>): boolean
-    // on(event: string, listener: Function): this;
-    // emit(event: string | symbol, ...args : any[]) : boolean;
-}
 
 
 export interface UserStatus {
     oid?: string;
     authKey?: string;
 }
-
 
 class ConversationStatus {
     oid: string = null;

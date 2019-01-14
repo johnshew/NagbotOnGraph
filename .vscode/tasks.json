@@ -8,6 +8,21 @@
             "script": "watch",
             "problemMatcher": [
                 "$tsc-watch"
+            ]
+        },
+        {
+            "type": "npm",
+            "script": "build",
+            "problemMatcher": [
+                "$tsc"
+            ]
+        },
+        {
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "option": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
             ],
             "runOptions": {
                 "runOn": "folderOpen",
@@ -15,11 +30,11 @@
             }
         },
         {
-            "type": "npm",
-            "script": "build",
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
             "problemMatcher": [
                 "$tsc"
-            ],
+            ]
         }
     ]
 }

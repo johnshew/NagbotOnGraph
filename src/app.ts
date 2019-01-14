@@ -6,10 +6,11 @@ import { OutlookTask, User } from "@microsoft/microsoft-graph-types-beta";
 import * as simpleAuth from './simpleAuth';
 import * as httpServer from './httpServer';
 import * as graphHelper from './graphHelper';
-import { NagBot, ConversationManager } from './nagbot';
+import { NagBot } from './nagbot';
 import { AppUser } from './users';
-import { NagBotService } from './simpleBotService';
-import { nagExpand, nagFilterNotCompletedAndNagMeCategory, StoreConversation } from './nagGraph';
+import { ConversationManager } from './conversationManager';
+import { NagBotService } from './nagbotService';
+import { nagExpand, nagFilterNotCompletedAndNagMeCategory, StoreConversation, LoadConversations } from './nagGraph';
 import { BotAdapter } from 'botbuilder';
 
 const ENV_FILE = path.join(__dirname, '../.env');
@@ -32,12 +33,16 @@ class MongoUsersMap {
     data = new Map<string, AppUser>();
 
     constructor(private mongoCollection: Collection<AppUser>) {
-        this.mongoCollection.find().toArray().then(users => {
+        this.mongoCollection.find().toArray().then(async users => {
             console.log(`Loaded users: ${JSON.stringify(users)}`);
-            users.forEach(user => {
+            for (const user of users) {
                 this.data.set(user.oid, user);
                 app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
-            });
+                let conversations = await LoadConversations(user.oid);
+                for (const conversation of conversations) {
+                    app.conversationManager.updateConversationsByUser(user.oid, conversation); //! TO FIX:  will do a write 
+                }
+            }
         });
     }
 
@@ -53,6 +58,11 @@ class MongoUsersMap {
     forEach(callback: (value: AppUser, key: string, map: MongoUsersMap) => void, thisArg?: any) {
         this.data.forEach((u, k, m) => { callback(u, k, this); }, thisArg);
     }
+
+    [Symbol.iterator](): IterableIterator<[string, AppUser]> {
+        let iterator: IterableIterator<[string, AppUser]> = this.data.entries();
+        return iterator;
+    }
 }
 
 export class AppConfig {
@@ -66,9 +76,9 @@ export class AppConfig {
     authManager?: simpleAuth.AuthManager;
     graphHelper?: graphHelper.GraphHelper;
     httpServer?: httpServer.Server;
-    adapter? : BotAdapter;
+    adapter?: BotAdapter;
     bot?: NagBot;
-    conversationManager? : ConversationManager;
+    conversationManager?: ConversationManager;
     mongoClient?: MongoClient;
 }
 
@@ -84,27 +94,24 @@ app.authManager.on('refreshed', () => console.log('refreshed'))
 const botService = new NagBotService(app.appId, app.appPassword, botPort);
 app.bot = botService.bot;
 app.conversationManager = botService.conversationManager;
-app.conversationManager.on('updated', (oid, conversation) => StoreConversation(oid,conversation));
+app.conversationManager.on('updated', (oid, conversation) => StoreConversation(oid, conversation));
 app.adapter = botService.adapter;
 
 app.httpServer = new httpServer.Server(httpServerPort);
 
-if (app.mongoConnection) {
-    mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
-        console.log('mongo connected');
-        app.mongoClient = client;
-        let db = app.mongoClient.db('Test');
-        let usersDb = db.collection<User>('users');
-        app.users = new MongoUsersMap(usersDb);
-    });
-}
-
-
+mongoClient.connect(app.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+    if (err) { console.log(`Error: ${err}`); return; }
+    console.log('mongo connected');
+    app.mongoClient = client;
+    let db = app.mongoClient.db('Test');
+    let usersDb = db.collection<User>('users');
+    app.users = new MongoUsersMap(usersDb);
+});
 
 function tick() {
     console.log(`Tick (${new Date().toLocaleString()})`);
     let users = app.users;
-    users.forEach(async (user, key) => {
+    app.users && users.forEach(async (user, key) => {
         try {
             let oid = app.authManager.jwtForUserAuthKey(user.authKey).oid;
             let accessToken = await app.authManager.accessTokenForAuthKey(user.authKey);
@@ -127,5 +134,4 @@ function tick() {
 }
 
 setInterval(() => tick(), 9 * 1000);
-
 

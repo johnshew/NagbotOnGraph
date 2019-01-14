@@ -6,6 +6,7 @@ export var nagExpand = "$expand=singleValueExtendedProperties($filter=id eq 'Str
 export var nagFilterNotCompletedAndNagMeCategory = "$filter=(status ne 'completed') and (categories/any(a:a eq 'NagMe'))";
 export var nagFilterNagMeCategory = "$filter=(categories/any(a:a eq 'NagMe'))";
 
+
 export async function StoreConversation(oid: string, conversation: Partial<ConversationReference>) {
     console.log(`oid: ${oid} and conversation: ${JSON.stringify(conversation)}`);
 
@@ -46,4 +47,13 @@ export async function StoreConversation(oid: string, conversation: Partial<Conve
         console.log(`post on user extension failed ${err}`);
         responseCode = err;
     }
+}
+
+export async function LoadConversations(oid: string)
+{
+    let accessToken = await app.authManager.accessTokenForOid(oid);
+    let data = <any> await app.graphHelper.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
+
+    let conversations : any[] = data.conversations || [];
+    return <Partial<ConversationReference>[]> conversations;
 }

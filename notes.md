@@ -4,42 +4,45 @@
 
 * Then login to at least one bot and signin. (done)
 
-* Then for "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time.
+* Then for "nag marked" incomplete tasks send notifications to associated bot channels. (done)
+
+* Need a simple policy and last nag time.
 
 * The notification contains a URL that leads to the web app - where we assume the user is logged in - that shows the task. (P0)
 
 * THe user mark can mark the task as complete.  This should immediately save and you can also click again to mark it not complete (P0)
 
-* We need to host the node app so it can work with teams, email, and SMS. (P4)
+* We need to host the node app so it can work with teams, email, and SMS. (P1)
 
-    * To get it running while doing coding that means you probably want a stable conversation store.  
-    * Maybe put this data on a user Open Extension.  How big can a user extension be?
+    * To get it running while doing coding that means you probably want a stable conversation store.  (done)
+    * Maybe put this data on a user Open Extension.  How big can a user extension be? (done)
 
-* Reattch LUIS processing. (P4)
 
 # Work Items
 
-* P0 - for a given user, store their channels in an open extension.
-
-* P1 - api/v1.0/tasks/id - returns json for task - (done)
-
-* P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy.  Need a simple policy and last nag time. (almost done)
-
+* P0 - Load persisted conversations at start
+* P1 - Use nagbot to mark a conversation as persisted for notifications
+* P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy with a simple policy and last nag time. 
 * P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id and show UX on that task.
-
 * P2 - Edit task/id.
-
-* P2 - Store userKey to oid map more persistently. (done)
-
 * P2 - Host in the cloud.
+* P2 - Multiple Nag Policies. 
+  * Maybe use a "versioned json object".  
+  * Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } 
+  * This would  nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
+* P3- Reattach LUIS
 
+* P0 - for a given user, store their channels in an open extension. (done)
+* P1 - api/v1.0/tasks/id - returns json for task - (done)
+* P2 - Store userKey to oid map more persistently. (done)
 * P3 - Factored interfaces for User. (done)
-
 * P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
 
-* P3 - Multiple Nag Policies. Maybe use a "versioned json object".  Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } which is a nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
+
 
 # Interesting
+
+* ssh -R 80:localhost:3978 serveo.net
 
 * <https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval>
 
