@@ -30,7 +30,7 @@ export class AppConfig {
     static readonly botLoginUrl = AppConfig.httpServerUrl + '/bot-login'
     static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.Read', 'User.ReadWrite'];
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
-    
+
 }
 
 class App {
@@ -47,15 +47,24 @@ class App {
 export var app = new App();
 
 app.graph = new OfficeGraph();
+
 app.authManager = new simpleAuth.AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl, AppConfig.authDefaultScopes);
-app.authManager.on('refreshed', () => console.log('refreshed'))
+app.authManager.on('refreshed', () => {
+    console.log('refreshed');
+});
 
 
 const botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
-app.bot = botService.bot;
-app.conversationManager = botService.conversationManager;
-app.conversationManager.on('updated', (oid, conversation) => app.graph.StoreConversation(oid, conversation));
 app.adapter = botService.adapter;
+app.bot = botService.bot;
+app.adapter.onTurnError = async (turnContext, error) => {
+    console.error(`\n[botOnTurnError]: ${error}`);
+};
+
+app.conversationManager = botService.conversationManager;
+app.conversationManager.on('updated', (oid, conversation) => {
+    app.graph.StoreConversation(oid, conversation);
+});
 
 app.httpServer = new httpServer.Server(AppConfig.httpServerPort);
 

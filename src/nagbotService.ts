@@ -22,10 +22,6 @@ export class NagBotService {
         
         this.adapter = new BotFrameworkAdapter({ appId: AppConfig.appId, appPassword: AppConfig.appPassword });
 
-        // Catch-all for errors.
-        this.adapter.onTurnError = async (turnContext, error) => {
-            console.error(`\n[botOnTurnError]: ${error}`);            
-        };
 
         try {
             this.bot = new NagBot ({ store: this.storage, conversationManager : this.conversationManager});

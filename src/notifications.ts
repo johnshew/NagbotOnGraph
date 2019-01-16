@@ -1,5 +1,11 @@
 import { app } from './app';
 
+function checkPolicy(policy: any, dueDate: Date, lastNagDate: Date): { notify: boolean, daysUntilDue: number } {
+    let daysSinceNag = Math.trunc((dueDate.valueOf() - lastNagDate.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
+    let daysUntilDue = Math.trunc((dueDate.valueOf() - Date.now()) / (1000 * 60 * 60 * 24));
+    return { notify: (daysSinceNag > 0) , daysUntilDue: daysUntilDue };
+}
+
 export async function notify() {
     let users = app.users;
     app.users && users.forEach(async (user, key) => {
@@ -10,19 +16,17 @@ export async function notify() {
             let tasks = await app.graph.getNagTasks(accessToken);
             for (const task of tasks) {
                 let dueDate = new Date(Date.parse(task.dueDateTime && task.dueDateTime.dateTime));
-                let nagLast = task.singleValueExtendedProperties && task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
-                let nagLastDate = nagLast ? (new Date(Date.parse(nagLast.value))) : new Date(0);
-                let daysSinceNag = Math.trunc((dueDate.valueOf() - nagLastDate.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
-                let daysUntilDue = Math.trunc((dueDate.valueOf() - Date.now()) / (1000 * 60 * 60 * 24));
-                console.log(`${task.subject} due ${daysUntilDue} days on ${dueDate.toLocaleDateString()}`);
+                let lastNag = task.singleValueExtendedProperties && task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
+                let lastNagDate = lastNag ? (new Date(Date.parse(lastNag.value))) : new Date(0);
+                let policy = checkPolicy('base', dueDate, lastNagDate);
+                if (!policy.notify) return;
+
                 let conversations = app.conversationManager.findAllConversations(oid);
                 for (const c of conversations) {
-                    if (daysSinceNag <= 1) continue;
                     await app.conversationManager.processActivityInConversation(app.adapter, c, async turnContext => {
-                        let message = (daysUntilDue > 0) ? `due in ${daysUntilDue}` : `overdue by ${-daysUntilDue}`;
+                        let dueMessage = (policy.daysUntilDue > 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;
                         await turnContext.sendActivity(
-`Task: ${task.subject}
-${message} days`);
+                            `Task: ${task.subject} ${dueMessage}`);
                         // update NagLast with current time.
                     });
                 }
