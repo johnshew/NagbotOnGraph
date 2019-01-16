@@ -3,7 +3,7 @@ import { Storage, BotFrameworkAdapter, MemoryStorage,  TurnContext } from 'botbu
 
 import { AppConfig } from './app';
 import { NagBot } from './nagbot';
-import { ConversationManager } from './conversationManager';
+import { ConversationManager } from './conversations';
 
 interface BotInterface {
     onTurn(turnContent: TurnContext) : void;

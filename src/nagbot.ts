@@ -4,7 +4,7 @@
 import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
 import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
-import { ConversationManager} from './conversationManager';
+import { ConversationManager} from './conversations';
 
 
 

@@ -9,12 +9,21 @@ export async function notify() {
             console.log(`User: ${oid}`);
             let tasks = await app.graph.getNagTasks(accessToken);
             for (const task of tasks) {
-                let date = new Date(Date.parse(task.dueDateTime && task.dueDateTime.dateTime));
-                console.log(`${task.subject} due ${date.toLocaleDateString()}`);
+                let dueDate = new Date(Date.parse(task.dueDateTime && task.dueDateTime.dateTime));
+                let nagLast = task.singleValueExtendedProperties && task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
+                let nagLastDate = nagLast ? (new Date(Date.parse(nagLast.value))) : new Date(0);
+                let daysSinceNag = Math.trunc((dueDate.valueOf() - nagLastDate.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
+                let daysUntilDue = Math.trunc((dueDate.valueOf() - Date.now()) / (1000 * 60 * 60 * 24));
+                console.log(`${task.subject} due ${daysUntilDue} days on ${dueDate.toLocaleDateString()}`);
                 let conversations = app.conversationManager.findAllConversations(oid);
                 for (const c of conversations) {
+                    if (daysSinceNag <= 1) continue;
                     await app.conversationManager.processActivityInConversation(app.adapter, c, async turnContext => {
-                        await turnContext.sendActivity('You should take care of ' + task.subject);
+                        let message = (daysUntilDue > 0) ? `due in ${daysUntilDue}` : `overdue by ${-daysUntilDue}`;
+                        await turnContext.sendActivity(
+`Task: ${task.subject}
+${message} days`);
+                        // update NagLast with current time.
                     });
                 }
             }

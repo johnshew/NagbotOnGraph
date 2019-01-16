@@ -8,7 +8,7 @@ import * as notifications from './notifications';
 import { OfficeGraph } from './officeGraph';
 import { NagBot } from './nagbot';
 import { User, UsersMap } from './users';
-import { ConversationManager } from './conversationManager';
+import { ConversationManager } from './conversations';
 import { NagBotService } from './nagbotService';
 import { BotAdapter } from 'botbuilder';
 
