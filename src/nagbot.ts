@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { default as app } from './app';
-import { Client as GraphClient } from '@microsoft/microsoft-graph-client';
-import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { randomBytes } from 'crypto';
+import { app, AppConfig } from './app';
+import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { ConversationManager} from './conversationManager';
+
 
 
 
@@ -86,7 +86,7 @@ export class NagBot {
                         // await this.conversationAccessor.set(turnContext, conversation);
                         // await this.conversationState.saveChanges(turnContext);
 
-                        let signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${app.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
+                        let signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${AppConfig.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
                         
                         if (turnContext.activity.channelId == 'msteams') {
                             // hack to fix teams.
@@ -109,15 +109,11 @@ export class NagBot {
                 break;
 
             case ActivityTypes.Event:
+                // TODO Handle OauthCard as login.
                 if (activity.name && activity.name === "tokens/response" && activity.value.token) {
                     await turnContext.sendActivity('Got a token');
                     let token = activity.value.token;
-                    let graphClient = GraphClient.init({
-                        authProvider: (done) => {
-                            done(null, token); // First parameter takes an error if you can't get an access token.
-                        }
-                    });
-                    let result = await graphClient.api('/me').get();
+                    let result = app.graph.get(token,'https://graph.microsoft.com/v1.0/me/');
                     await turnContext.sendActivity(`Result: ${JSON.stringify(result)}`);
                 }
                 break;

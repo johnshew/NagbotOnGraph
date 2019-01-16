@@ -20,27 +20,30 @@
 
 # Work Items
 
-* P0 - Load persisted conversations at start
-* P1 - Use nagbot to mark a conversation as persisted for notifications
+* P0 - Load persisted conversations at start (done)
 * P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy with a simple policy and last nag time. 
-* P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id and show UX on that task.
-* P2 - Edit task/id.
+* P1 - Bug: if a channel doesn't work - then remove it - longer term wait for a period of time.
+* P2 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id and show UX on that task.
+* P2 - Mark complete.
 * P2 - Host in the cloud.
-* P2 - Multiple Nag Policies. 
+* P3 - Use nagbot to mark a conversation as persisted for notifications
+* P3 - Multiple Nag Policies.
   * Maybe use a "versioned json object".  
   * Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } 
   * This would  nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
 * P3- Reattach LUIS
+
+
+# Recently completed.
 
 * P0 - for a given user, store their channels in an open extension. (done)
 * P1 - api/v1.0/tasks/id - returns json for task - (done)
 * P2 - Store userKey to oid map more persistently. (done)
 * P3 - Factored interfaces for User. (done)
 * P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
+* P3 - Basic task edit.
 
-
-
-# Interesting
+# Useful
 
 * ssh -R 80:localhost:3978 serveo.net
 

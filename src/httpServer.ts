@@ -1,7 +1,8 @@
-import { default as app } from './app';
+
 import * as restify from 'restify';
 import * as http from 'http';
-import { nagExpand, nagFilterNotCompletedAndNagMeCategory } from './nagGraph';
+
+import { app } from './app';
 import { OutlookTask, OpenTypeExtension }  from '@microsoft/microsoft-graph-types-beta';
 
 
@@ -15,7 +16,7 @@ export class Server extends http.Server {
         This = httpServer; // TO DO - does this really work?
 
         let authManager = app.authManager;
-        let graphHelper = app.graphHelper;
+        let graphHelper = app.graph;
         let bot = app.bot;
         
 
@@ -180,29 +181,28 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
+            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.Expand}`);
             // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
-            // 
         })
 
         httpServer.get('/api/v1.0/tasks/:id', async (req, res, next) => {
             let id = req.params["id"];
-            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`);
+            await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.Expand}`);
         })
 
         httpServer.patch('/api/v1.0/tasks/:id', async (req, res, next) => {
             let id = req.params["id"];
             let data = req.body;
-            await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`, data);
+            await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.Expand}`, data);
         })
 
         httpServer.get('/test-patch', async (req, res, next) => {
-            let tasks = await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${nagFilterNotCompletedAndNagMeCategory}&${nagExpand}`);
+            let tasks = await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.Expand}`);
             if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
                 let task = <OutlookTask> tasks.value[0];
                 let id = task.id;
                 let data = JSON.parse("{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }");
-                await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${nagExpand}`, data);
+                await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.Expand}`, data);
             }            
         });
 
@@ -258,7 +258,7 @@ async function graphGet(req: restify.Request, res: restify.Response, next: resti
     let errorMessage: string | null = null;
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-        let data = await app.graphHelper.get(accessToken, url);
+        let data = await app.graph.get(accessToken, url);
         if (data) {
             if (composer) {
                 res.setHeader('Content-Type', 'text/html');
@@ -284,7 +284,7 @@ async function graphPatch(req: restify.Request, res: restify.Response, next: res
     let errorMessage = "";
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-        let result = await app.graphHelper.patch(accessToken, url, data);
+        let result = await app.graph.patch(accessToken, url, data);
         return next();
     }
     catch (err) {
