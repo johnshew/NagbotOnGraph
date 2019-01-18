@@ -19,7 +19,7 @@ export async function notify() {
                 let dueDate = new Date(Date.parse(task.dueDateTime && task.dueDateTime.dateTime));
                 let lastNag = task.singleValueExtendedProperties && task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
                 let lastNagDate = lastNag && lastNag.value ? (new Date(Date.parse(lastNag.value))) : new Date(0);
-                let policy = checkPolicy('always', dueDate, lastNagDate);
+                let policy = checkPolicy('base', dueDate, lastNagDate);
                 if (!policy.notify) return;
                 let conversations = app.conversationManager.findAllConversations(oid);
                 for await (const conversation of conversations) {

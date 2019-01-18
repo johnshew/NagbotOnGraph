@@ -14,24 +14,20 @@ import { BotAdapter } from 'botbuilder';
 
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
-var appId = process.env.appId;
-var appPassword = process.env.appPassword;
-var mongoConnection = process.env.mongoConnection;
-if (!appId || !appPassword || !mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 export class AppConfig {
-
-    static readonly appId = appId;
-    static readonly appPassword = appPassword;
-    static readonly mongoConnection = mongoConnection;
+    static readonly appId = process.env.appId;
+    static readonly appPassword = process.env.appPassword;
+    static readonly mongoConnection = process.env.mongoConnection;
     static readonly httpServerPort = process.env.port || process.env.PORT || '8080';
     static readonly httpServerUrl = `http://localhost${AppConfig.httpServerPort.length > 0 ? ':' + AppConfig.httpServerPort : ''}`;
     static readonly authUrl = AppConfig.httpServerUrl + '/auth';
     static readonly botLoginUrl = AppConfig.httpServerUrl + '/bot-login'
     static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.ReadWrite', 'User.ReadWrite'];
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
-
 }
+
+if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 class App {
     users?: UsersMap;
