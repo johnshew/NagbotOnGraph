@@ -32,9 +32,10 @@ export async function notify() {
                             let property : SingleValueLegacyExtendedProperty = { id: 'String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast', value: now };
                             task.singleValueExtendedProperties.push(property);
                         }
-                        await turnContext.sendActivity(`Task: ${task.subject} ${dueMessage}`);
+                        await turnContext.sendActivity(`Task: ${task.subject} ${dueMessage}`).catch(err => console.log(`notify/sendActivity ${err}`));
                         let body = { singleValueExtendedProperties: task.singleValueExtendedProperties };
-                        await app.graph.patch(accessToken,`https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, body);                        
+                        await app.graph.patch(accessToken,`https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, body).catch(err => { 
+                            console.log(`notify/sendActivity ${err}`); });                       
                     });
                 }
             }

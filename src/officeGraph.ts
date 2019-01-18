@@ -18,7 +18,7 @@ export class OfficeGraph {
                 let data = await response.json();
                 return resolve(data);
             }
-            return reject(response.status);
+            return reject(response);
         });
     }
 
@@ -37,7 +37,7 @@ export class OfficeGraph {
             if (response.status == 200 || response.status == 204) {
                 return resolve();
             }
-            return reject(response.status);
+            return reject(response);
         });
     }
 
@@ -56,7 +56,7 @@ export class OfficeGraph {
             if (response.status == 201 || response.status == 200 || response.status == 204) {
                 return resolve(response.headers.get('location'));
             }
-            return reject(response.status);
+            return reject(response);
         });
     }
 

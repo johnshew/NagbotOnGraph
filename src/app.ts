@@ -28,7 +28,7 @@ export class AppConfig {
     static readonly httpServerUrl = `http://localhost${AppConfig.httpServerPort.length > 0 ? ':' + AppConfig.httpServerPort : ''}`;
     static readonly authUrl = AppConfig.httpServerUrl + '/auth';
     static readonly botLoginUrl = AppConfig.httpServerUrl + '/bot-login'
-    static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.Read', 'User.ReadWrite'];
+    static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.ReadWrite', 'User.ReadWrite'];
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
 
 }
