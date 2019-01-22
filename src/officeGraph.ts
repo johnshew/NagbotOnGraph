@@ -37,7 +37,7 @@ export class OfficeGraph {
             if (response.status == 200 || response.status == 204) {
                 return resolve();
             }
-            return reject(response);
+            return reject(new Error (`Patch failed with ${response.status} ${response.statusText}`));
         });
     }
 
