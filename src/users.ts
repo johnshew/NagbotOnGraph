@@ -16,7 +16,7 @@ export class UsersMap {
 
     constructor(private mongoCollection: Collection<User>) {
         this.mongoCollection.find().toArray().then(async users => {
-            console.log(`Loaded users: ${JSON.stringify(users)}`);
+            console.log(`Loaded users: ${JSON.stringify(users,null,2)}`);
             for (const user of users) {
                 this.data.set(user.oid, user);
                 app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);

@@ -68,7 +68,8 @@ export class OfficeGraph {
 
         // Will read then write.  No way to do a partial update on an extension.  Should be checking etags.
 
-        console.log(`oid: ${oid} and conversation: ${JSON.stringify(conversation)}`);
+        console.log(`oid: ${oid}
+    conversation: ${JSON.stringify(conversation,null,2)}`);
 
         let accessToken = await app.authManager.accessTokenForOid(oid);
         let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');

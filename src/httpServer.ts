@@ -3,7 +3,7 @@ import * as restify from 'restify';
 import * as http from 'http';
 
 import { app } from './app';
-import { OutlookTask, OpenTypeExtension }  from '@microsoft/microsoft-graph-types-beta';
+import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types-beta';
 
 
 // Create the Web Server
@@ -18,7 +18,7 @@ export class Server extends http.Server {
         let authManager = app.authManager;
         let graphHelper = app.graph;
         let bot = app.bot;
-        
+
 
         httpServer.pre((req, res, next) => {
             res.header("Access-Control-Allow-Origin", "*");
@@ -61,7 +61,7 @@ export class Server extends http.Server {
                     let userAuthKey = await authManager.userAuthKeyFromCode(code);
                     let jwt = authManager.jwtForUserAuthKey(userAuthKey);
                     let authTokens = app.authManager.userAuthKeyToTokensMap.get(userAuthKey);
-                    await app.users.set(jwt.oid, { oid: jwt.oid, authKey: userAuthKey, authTokens : authTokens });
+                    await app.users.set(jwt.oid, { oid: jwt.oid, authKey: userAuthKey, authTokens: authTokens });
                     res.header('Set-Cookie', 'userId=' + userAuthKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
                     let stateString: string = req.query.state;
                     let state: any = {}
@@ -90,19 +90,18 @@ export class Server extends http.Server {
         });
 
         httpServer.get('/mail', async (req, res, next) => {
-            await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data : { value : OutlookTask[]}) => {
+            await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data: { value: OutlookTask[] }) => {
                 let subjects = data.value.map(tasks => 'Subject: ' + tasks.subject);
                 return templateHtmlResponse('Mail', '', subjects, '<a href="/">Continue</a>');
             })
         });
 
         httpServer.get('/tasks', async (req, res, next) => {
-            await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data : { value : OutlookTask[]}) => {
+            await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data: { value: OutlookTask[] }) => {
                 let subjects = data.value.map(task => 'Subject: ' + task.subject);
                 return templateHtmlResponse('Tasks', '', subjects, '<a href="/">Continue</a>');
             })
         });
-
 
         httpServer.get('/profile', async (req, res, next) => {
             let errorMessage: string | null = null;
@@ -112,7 +111,7 @@ export class Server extends http.Server {
                 if (data) {
                     res.header('Content-Type', 'text/html');
                     res.write(`<html><head></head><body><h1>User extension net.shew.nagger</h1>`);
-                    res.write(`<p> ${JSON.stringify(data)} </p>`);
+                    res.write(`<pre> ${JSON.stringify(data,null,2)} </pre>`);
                     res.end(`</body></html>`);
                     next();
                     return;
@@ -180,6 +179,56 @@ export class Server extends http.Server {
             return next();
         });
 
+        httpServer.get('/edit-task', async (req, res, next) => {
+            try {
+                let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
+                let oid = req.query['oid'];
+                let taskId = req.query['taskid'];
+                if (!jwt || !jwt.oid || !oid || !taskId) throw (`edit-task missing parameters`);
+                if (jwt.oid != oid) {
+                    console.log('not legged in');
+                    return res.redirect('/', next);
+                }
+                let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+                let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.Expand}`);
+                res.setHeader('Content-Type', 'text/html');
+                res.end(templateHtmlResponse('task', `<pre>${JSON.stringify(data, null, 2)}</pre>`,[],""));
+                return next();
+            } catch (err) {
+                console.log(`/edit-task failed. (${err}()`);
+                return next();
+            }
+        });
+
+        httpServer.get('/complete-task', async (req, res, next) => {
+            try {
+                let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
+                let oid = req.query['oid'];
+                let taskId = req.query['taskid'];
+                if (!jwt || !jwt.oid || !oid || !taskId) throw (`edit-task missing parameters`);
+                if (jwt.oid != oid) {
+                    console.log('not legged in');
+                    return res.redirect('/', next);
+                }
+                let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+                let body : OutlookTask = { status: "completed" };
+
+                await app.graph.patch(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}`, body)
+                    .catch(err => { throw Error(`Notify/patch failed (${err})`) });
+                let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.Expand}`);
+                res.setHeader('Content-Type', 'text/html');
+                let text = `<pre>${JSON.stringify(data,null,2)}</pre>`;
+                res.end(templateHtmlResponse('task', text, [], ""));
+                return next();
+            } catch (err) {
+                console.log(`/complete-task failed. (${err})`);
+                res.send(404,JSON.stringify(err));
+                res.end();
+                return next()
+            }
+        });
+
+
         httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
             await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.Expand}`);
             // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
@@ -199,11 +248,11 @@ export class Server extends http.Server {
         httpServer.get('/test-patch', async (req, res, next) => {
             let tasks = await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.Expand}`);
             if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
-                let task = <OutlookTask> tasks.value[0];
+                let task = <OutlookTask>tasks.value[0];
                 let id = task.id;
                 let data = JSON.parse("{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }");
                 await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.Expand}`, data);
-            }            
+            }
         });
 
         httpServer.get('/api/v1.0/me', async (req, res, next) => {
@@ -217,7 +266,7 @@ export class Server extends http.Server {
 }
 
 function getCookie(req: restify.Request, key: string): string {
-    var list = <{ [index : string] : string }>  {};
+    var list = <{ [index: string]: string }>{};
     var rc = req.header('cookie');
 
     rc && rc.split(';').forEach(cookie => {
@@ -254,7 +303,7 @@ function templateHtmlResponse(title: string, message: string, list: string[], fo
 </html>`
 }
 
-async function graphGet(req: restify.Request, res: restify.Response, next: restify.Next, url: string, composer?: (result: any) => string) : Promise<any> {
+async function graphGet(req: restify.Request, res: restify.Response, next: restify.Next, url: string, composer?: (result: any) => string): Promise<any> {
     let errorMessage: string | null = null;
     try {
         let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));

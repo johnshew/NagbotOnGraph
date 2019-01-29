@@ -1,14 +1,20 @@
 import { app } from './app';
 import { SingleValueLegacyExtendedProperty, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
 
-function checkNotificationPolicy(policy: any, task: OutlookTask): { notify: boolean, daysUntilDue: number } {
+function checkNotificationPolicy(policy: string, task: OutlookTask): { notify: boolean, daysUntilDue: number } {
     let dueDate = new Date(Date.parse(task.dueDateTime && task.dueDateTime.dateTime));
     let lastNag = task.singleValueExtendedProperties && task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
     let lastNagDate = lastNag && lastNag.value ? (new Date(Date.parse(lastNag.value))) : new Date(0);
-    let daysSinceNag = Math.trunc((dueDate.valueOf() - lastNagDate.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
+    let daysSinceNag = Math.trunc((Date.now() - lastNagDate.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
+    let minsSinceNag = Math.trunc((Date.now() - lastNagDate.valueOf()) / (1000 * 60));
     let daysUntilDue = Math.trunc((dueDate.valueOf() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (policy == 'base') return { notify: (daysSinceNag > 0), daysUntilDue: daysUntilDue };
-    else return { notify: true, daysUntilDue: daysUntilDue };
+    switch (policy) {
+        case 'base':
+            return { notify: (daysSinceNag > 0), daysUntilDue };
+        case 'quickly':
+            return { notify: (minsSinceNag > 2), daysUntilDue };
+        default: return { notify: true, daysUntilDue };
+    }
 }
 
 function updateNagLast(task: OutlookTask, time: Date) {
@@ -24,11 +30,12 @@ export async function notify() {
     for await (const [oid, user] of app.users) {
         try {
             let accessToken = await app.authManager.accessTokenForOid(oid);
+            if (!accessToken) { throw Error(`Unable to acquire access token from ${oid}`); }
             console.log(`User: ${oid}`);
             let tasks = await app.graph.getNagTasks(accessToken);
             for await (const task of tasks) {
 
-                let policy = checkNotificationPolicy('base', task);
+                let policy = checkNotificationPolicy('quickly', task);
                 if (!policy.notify) return;
 
                 let conversations = app.conversationManager.findAllConversations(oid);
@@ -36,16 +43,16 @@ export async function notify() {
                     await app.conversationManager.processActivityInConversation(app.adapter, conversation, async turnContext => {
                         try {
                             let dueMessage = (policy.daysUntilDue > 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;
-                            let editMessage = `http://localhost:8080/editTask?oid=${encodeURIComponent(oid)}&taskid=${encodeURIComponent(task.id)}`;
+                            let editMessage = `http://localhost:8080/complete-task?oid=${encodeURIComponent(oid)}&taskid=${encodeURIComponent(task.id)}`;
                             let now = new Date(Date.now());
 
-                            await turnContext.sendActivity(`Task: ${task.subject} ${dueMessage} ${editMessage}`)
-                            .catch(err => { throw Error(`notify/sendActivity failed ${err}`); })
+                            await turnContext.sendActivity(`You have a task "${task.subject}" that is ${dueMessage}. [Mark complete](${editMessage})`)
+                                .catch(err => { throw Error(`notify/sendActivity failed ${err}`); })
 
                             updateNagLast(task, now);
                             let body = { singleValueExtendedProperties: task.singleValueExtendedProperties };
                             await app.graph.patch(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, body)
-                            .catch(err => { throw Error(`Notify/patch failed (${err})`) });
+                                .catch(err => { throw Error(`Notify/patch failed (${err})`) });
                         } catch (err) {
                             console.log(`notify/processActivityInConversation failed (${err})`);
                         }

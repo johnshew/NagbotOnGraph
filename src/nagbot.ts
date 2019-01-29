@@ -57,7 +57,7 @@ export class NagBot {
     async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
         let adapter = turnContext.adapter;
-        console.log(`onTurn: ${JSON.stringify(turnContext)}`);
+        console.log(`onTurn: ${JSON.stringify(turnContext,null,2)}`);
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
@@ -67,7 +67,7 @@ export class NagBot {
                 switch (activity.text.toLowerCase().trim()) {
                     case 'login':
                         let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
-                        console.log(`Attachment: ${JSON.stringify(oauthCardAttachment)}`);
+                        console.log(`Attachment: ${JSON.stringify(oauthCardAttachment,null,2)}`);
                         await turnContext.sendActivity({ attachments: [oauthCardAttachment] });
                         return;
                     case 'signin':
@@ -93,7 +93,7 @@ export class NagBot {
                             signinCardAttachment.content.buttons[0].type = ActionTypes.OpenUrl;
                         }
     
-                        console.log(`Attachment: ${JSON.stringify(signinCardAttachment)}`);
+                        console.log(`Attachment: ${JSON.stringify(signinCardAttachment,null,2)}`);
                         await turnContext.sendActivity({ attachments: [signinCardAttachment] });
                         return;
                     default:
@@ -114,7 +114,7 @@ export class NagBot {
                     await turnContext.sendActivity('Got a token');
                     let token = activity.value.token;
                     let result = app.graph.get(token,'https://graph.microsoft.com/v1.0/me/');
-                    await turnContext.sendActivity(`Result: ${JSON.stringify(result)}`);
+                    await turnContext.sendActivity(`Result: ${JSON.stringify(result,null,2)}`);
                 }
                 break;
 

@@ -1,9 +1,15 @@
  # MVP
 
 * The notification contains a URL that leads to the web app - where we assume the user is logged in - that shows the task. (P0)
+  * What to do about channels: Teams doesn't support markdown, right?  But it does support cards with links. SMS doesn't support anything.  Mail supports markdown
 * The user mark can mark the task as complete.  This should immediately save and you can also click again to mark it not complete (P0)
 * Do work in branch and PR into main.
 * Add a test suite.
+
+# Consider
+* For the URL - consider having a TTL buffer and use shorter URLs.   Make it easier for sms channel.  
+* Do we want an SMS channel - probably better to nag directly using MMS.
+* Do we want to put the conversations into Monngo - see ConversationManager2 in conversations.ts
 
 # MVP completed
 
@@ -17,7 +23,7 @@
 
 # Work Items
 
-* P1 - Send a Nag with a url to nagbot.shew.net/task/id where id is the Outlook Task id and show UX on that task.
+* P1 - Send a Nag with a url to nagbot.shew.net/xxx/oid/taskid where id is the Outlook Task id and show UX on that task.
 * P2 - Mark complete.
 * P2 - Host in the cloud.
 * P2 - Reattach LUIS
