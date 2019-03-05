@@ -52,6 +52,7 @@
   "exclude": [
     "node_modules",
     "data_models",
-    "public"
+    "public",
+    "lib"
   ]
 }

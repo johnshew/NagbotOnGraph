@@ -30,6 +30,7 @@ export class AppConfig {
 if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 class App {
+    ready: Promise<void>;
     users?: UsersMap;
     authManager?: simpleAuth.AuthManager;
     graph?: OfficeGraph;
@@ -64,16 +65,21 @@ app.conversationManager.on('updated', (oid, conversation) => {
 
 app.httpServer = new httpServer.Server(AppConfig.httpServerPort);
 
-MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
-    if (err) { console.log(`Error: ${err}`); return; }
-    console.log('mongo connected');
-    app.mongoClient = client;
-    let db = app.mongoClient.db('Test');
-    let usersDb = db.collection<User>('users');
-    app.users = new UsersMap(usersDb);
+app.ready = new Promise((resolve, reject) => {
+    MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+        if (err) { console.log(`Error: ${err}`); return; }
+        console.log('mongo connected');
+        app.mongoClient = client;
+        let db = app.mongoClient.db('Test');
+        let usersDb = db.collection<User>('users');
+        app.users = new UsersMap(usersDb);
+        await app.users.ready;
+        resolve();
+    });
 });
 
 setInterval(async () => {
+    await app.ready;
     console.log(`Tick at (${new Date().toLocaleString()})`);
     await notifications.notify();
 }, 11 * 1000);
