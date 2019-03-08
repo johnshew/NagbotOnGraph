@@ -53,6 +53,7 @@
     "node_modules",
     "data_models",
     "public",
-    "lib"
+    "lib",
+    "__tests__"
   ]
 }

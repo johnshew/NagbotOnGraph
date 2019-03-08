@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@microsoft/microsoft-graph-types": "^1.5.0",
-    "@microsoft/microsoft-graph-types-beta": "github:microsoftgraph/msgraph-typescript-typings#beta",
+    "@microsoft/microsoft-graph-types-beta": "github:microsoftgraph/msgraph-typescript-typings#pipelinebuild/beta/1066682",
     "@types/dotenv": "^6.1.0",
     "@types/jest": "^24.0.9",
     "@types/mongodb": "^3.1.18",
