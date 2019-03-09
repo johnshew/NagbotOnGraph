@@ -54,6 +54,6 @@
     "data_models",
     "public",
     "lib",
-    "__tests__"
+    "src/__tests__"
   ]
 }
