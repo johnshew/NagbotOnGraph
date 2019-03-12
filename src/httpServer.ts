@@ -263,6 +263,16 @@ export class Server extends http.Server {
             console.log(`\n${httpServer.name} listening to ${httpServer.url}`);
         });
     }
+
+    async asyncClose(callback? : () => {}) : Promise<void> {
+        return new Promise<void>((resolve, reject)=>{
+            this.close(()=>{
+                console.log('Closing httpServer');
+                if (callback) callback();
+                return resolve();
+            })
+        });
+    }
 }
 
 function getCookie(req: restify.Request, key: string): string {

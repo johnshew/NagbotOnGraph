@@ -44,8 +44,8 @@ class App {
     async close() : Promise<void> {
         if (!timer) throw new Error('No timer');
         clearInterval(timer);
-        // await (util.promisify(this.httpServer.close))();
-        // await (util.promisify(this.botService.httpServer.close))(() => {});
+        await this.httpServer.asyncClose();
+        await this.botService.asyncClose();
         await this.mongoClient.close();
         return;
     }
