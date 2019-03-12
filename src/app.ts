@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { MongoClient } from 'mongodb';
+import * as util from 'util';
 
 import * as simpleAuth from './simpleAuth';
 import * as httpServer from './httpServer';
@@ -30,7 +31,7 @@ export class AppConfig {
 if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 class App {
-    ready: Promise<void>;
+    initialized: Promise<void>;
     users?: UsersMap;
     authManager?: simpleAuth.AuthManager;
     graph?: OfficeGraph;
@@ -39,6 +40,12 @@ class App {
     bot?: NagBot;
     conversationManager?: ConversationManager;
     mongoClient?: MongoClient;
+    async close() : Promise<void> {
+        clearInterval(timer);
+        await util.promisify(this.httpServer.close);
+        await this.mongoClient.close();
+        return;
+    }
 }
 
 export var app = new App();
@@ -65,7 +72,7 @@ app.conversationManager.on('updated', (oid, conversation) => {
 
 app.httpServer = new httpServer.Server(AppConfig.httpServerPort);
 
-app.ready = new Promise((resolve, reject) => {
+app.initialized = new Promise((resolve, reject) => {
     MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
         if (err) { console.log(`Error: ${err}`); return; }
         console.log('mongo connected');
@@ -78,8 +85,8 @@ app.ready = new Promise((resolve, reject) => {
     });
 });
 
-setInterval(async () => {
-    await app.ready;
+let timer = setInterval(async () => {
+    await app.initialized;
     console.log(`Tick at (${new Date().toLocaleString()})`);
     await notifications.notify();
 }, 11 * 1000);

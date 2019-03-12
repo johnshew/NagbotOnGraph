@@ -3,7 +3,7 @@ import { app } from '../app';
 
 describe("Working", async () => {
     test("Check app configuration", async ()=>{
-        await app.ready;
+        await app.initialized;
         expect(app.adapter).toBeDefined();
         expect(app.authManager).toBeDefined();
         expect(app.bot).toBeDefined();
@@ -11,6 +11,7 @@ describe("Working", async () => {
         expect(app.graph).toBeDefined();
         expect(app.httpServer).toBeDefined();
         expect(app.mongoClient).toBeDefined();
-        expect(app.users).toBeDefined();        
+        expect(app.users).toBeDefined();
+        await app.close();
     })
 });
