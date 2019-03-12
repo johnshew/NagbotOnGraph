@@ -4,6 +4,7 @@ import { app } from '../app';
 describe("Working", async () => {
     test("Check app configuration", async ()=>{
         await app.initialized;
+        console.log('Application execution');
         expect(app.adapter).toBeDefined();
         expect(app.authManager).toBeDefined();
         expect(app.bot).toBeDefined();

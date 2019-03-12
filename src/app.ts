@@ -36,13 +36,16 @@ class App {
     authManager?: simpleAuth.AuthManager;
     graph?: OfficeGraph;
     httpServer?: httpServer.Server;
+    botService? : NagBotService;
     adapter?: BotAdapter;
     bot?: NagBot;
     conversationManager?: ConversationManager;
     mongoClient?: MongoClient;
     async close() : Promise<void> {
+        if (!timer) throw new Error('No timer');
         clearInterval(timer);
-        await util.promisify(this.httpServer.close);
+        // await (util.promisify(this.httpServer.close))();
+        // await (util.promisify(this.botService.httpServer.close))(() => {});
         await this.mongoClient.close();
         return;
     }
@@ -58,14 +61,14 @@ app.authManager.on('refreshed', () => {
 });
 
 
-const botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
-app.adapter = botService.adapter;
-app.bot = botService.bot;
+app.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
+app.adapter = app.botService.adapter;
+app.bot = app.botService.bot;
 app.adapter.onTurnError = async (turnContext, error) => {
     console.error(`\n[botOnTurnError]: ${error}`);
 };
 
-app.conversationManager = botService.conversationManager;
+app.conversationManager = app.botService.conversationManager;
 app.conversationManager.on('updated', (oid, conversation) => {
     app.graph.StoreConversation(oid, conversation);
 });
