@@ -1,10 +1,8 @@
  # MVP
-
-* The notification contains a URL that leads to the web app - where we assume the user is logged in - that shows the task. (P0)
-  * What to do about channels: Teams doesn't support markdown, right?  But it does support cards with links. SMS doesn't support anything.  Mail supports markdown
-* The user mark can mark the task as complete.  This should immediately save and you can also click again to mark it not complete (P0)
+* Host in the cloud - kubernetes with mongo?
 * Do work in branch and PR into main.
-* Add a test suite.
+* Add a test suite - jest
+* Not doing a big office query office every time.  Maybe remember a highwater mark?
 
 # Consider
 * For the URL - consider having a TTL buffer and use shorter URLs.   Make it easier for sms channel.  
@@ -19,7 +17,8 @@
 * Need a simple policy and last nag time.
 * To get it running while doing coding that means you probably want a stable conversation store.  (done)
 * Maybe put this data on a user Open Extension.  How big can a user extension be? (done)
-
+* The notification contains a URL that leads to the web app - where we assume the user is logged in - that shows the task. (P0)
+* The user mark can mark the task as complete.  This should immediately save and you can also click again to mark it not complete 
 
 # Work Items
 
@@ -48,8 +47,10 @@
 # Useful
 
 * ssh -R 80:localhost:3978 serveo.net
-* <https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval>
-* <https://docs.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/complex-types-for-mail-contacts-calendar#MessageResource>
+* https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval
+* https://docs.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/complex-types-for-mail-contacts-calendar#MessageResource
+* docker build -t foo .
+* docker run -p 8080:8080 -p 3978:3978 tag
 
 # Futures 
 

@@ -36,10 +36,12 @@ export async function notify() {
             for await (const task of tasks) {
 
                 let policy = checkNotificationPolicy('quickly', task);
-                if (!policy.notify) return;
+                if (!policy.notify) continue;
 
+                console.log(`Task ${task.id}(${task.subject}) is ready for in policy`);
                 let conversations = app.conversationManager.findAllConversations(oid);
                 for await (const conversation of conversations) {
+                    console.log(`Sending notificaton to ${conversation.conversation.id}`)
                     await app.conversationManager.processActivityInConversation(app.adapter, conversation, async turnContext => {
                         try {
                             let dueMessage = (policy.daysUntilDue > 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;

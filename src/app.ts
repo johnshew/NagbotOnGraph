@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { MongoClient } from 'mongodb';
+import * as util from 'util';
 
 import * as simpleAuth from './simpleAuth';
 import * as httpServer from './httpServer';
@@ -27,17 +28,28 @@ export class AppConfig {
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
 }
 
+
 if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 class App {
+    initialized: Promise<void>;
     users?: UsersMap;
     authManager?: simpleAuth.AuthManager;
     graph?: OfficeGraph;
     httpServer?: httpServer.Server;
+    botService? : NagBotService;
     adapter?: BotAdapter;
     bot?: NagBot;
     conversationManager?: ConversationManager;
     mongoClient?: MongoClient;
+    async close() : Promise<void> {
+        if (!timer) throw new Error('No timer');
+        clearInterval(timer);
+        await this.httpServer.asyncClose();
+        await this.botService.asyncClose();
+        await this.mongoClient.close();
+        return;
+    }
 }
 
 export var app = new App();
@@ -50,30 +62,35 @@ app.authManager.on('refreshed', () => {
 });
 
 
-const botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
-app.adapter = botService.adapter;
-app.bot = botService.bot;
+app.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
+app.adapter = app.botService.adapter;
+app.bot = app.botService.bot;
 app.adapter.onTurnError = async (turnContext, error) => {
     console.error(`\n[botOnTurnError]: ${error}`);
 };
 
-app.conversationManager = botService.conversationManager;
+app.conversationManager = app.botService.conversationManager;
 app.conversationManager.on('updated', (oid, conversation) => {
     app.graph.StoreConversation(oid, conversation);
 });
 
 app.httpServer = new httpServer.Server(AppConfig.httpServerPort);
 
-MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
-    if (err) { console.log(`Error: ${err}`); return; }
-    console.log('mongo connected');
-    app.mongoClient = client;
-    let db = app.mongoClient.db('Test');
-    let usersDb = db.collection<User>('users');
-    app.users = new UsersMap(usersDb);
+app.initialized = new Promise((resolve, reject) => {
+    MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+        if (err) { console.log(`Error: ${err}`); return; }
+        console.log('mongo connected');
+        app.mongoClient = client;
+        let db = app.mongoClient.db('Test');
+        let usersDb = db.collection<User>('users');
+        app.users = new UsersMap(usersDb);
+        await app.users.ready;
+        resolve();
+    });
 });
 
-setInterval(async () => {
+let timer = setInterval(async () => {
+    await app.initialized;
     console.log(`Tick at (${new Date().toLocaleString()})`);
     await notifications.notify();
 }, 11 * 1000);

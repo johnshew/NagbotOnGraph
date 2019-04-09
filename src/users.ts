@@ -8,15 +8,17 @@ export interface User extends UserStatus {
     oid?: string;
     authKey?: string;
     preferredName?: string;
-    authTokens? : AuthTokens;
+    authTokens?: AuthTokens;
 };
 
 export class UsersMap {
     data = new Map<string, User>();
+    public ready: Promise<void>;
 
     constructor(private mongoCollection: Collection<User>) {
-        this.mongoCollection.find().toArray().then(async users => {
-            console.log(`Loaded users: ${JSON.stringify(users,null,2)}`);
+        this.ready = new Promise(async (resolve, reject) => {
+            let users = await this.mongoCollection.find().toArray();
+            console.log(`Loaded users: ${JSON.stringify(users, null, 2)}`);
             for (const user of users) {
                 this.data.set(user.oid, user);
                 app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
@@ -25,6 +27,7 @@ export class UsersMap {
                     app.conversationManager.updateConversationsByUser(user.oid, conversation); //! TO FIX:  will do a write 
                 }
             }
+            resolve();
         });
     }
 

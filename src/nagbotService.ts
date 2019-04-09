@@ -43,4 +43,14 @@ export class NagBotService {
             });
         });
     }
+
+    async asyncClose(callback? : () => {}) : Promise<void> {
+        return new Promise<void>((resolve, reject)=>{
+            this.httpServer.close(()=>{
+                console.log('Closed nagbotService');
+                if (callback) callback();
+                return resolve();
+            })
+        });
+    }
 }
