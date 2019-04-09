@@ -1,8 +1,8 @@
 
 import { app } from '../app';
 
-describe("Working", function() {
-    test("Check app configuration", async() => {
+describe("Working", () => {
+    test("Check app configuration", async(done) => {
         await app.initialized;
         console.log('Application test starting ');
         expect(app.adapter).toBeDefined();
@@ -15,6 +15,6 @@ describe("Working", function() {
         expect(app.users).toBeDefined();
         await app.close();
         console.log('Application test complete')
-        return;
+        done();
     })
 });

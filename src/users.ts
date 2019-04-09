@@ -13,22 +13,21 @@ export interface User extends UserStatus {
 
 export class UsersMap {
     data = new Map<string, User>();
-    public ready : Promise<void>;
+    public ready: Promise<void>;
 
     constructor(private mongoCollection: Collection<User>) {
-        this.ready = new Promise((resolve, reject) => {
-            this.mongoCollection.find().toArray().then(async users => {
-                console.log(`Loaded users: ${JSON.stringify(users, null, 2)}`);
-                for (const user of users) {
-                    this.data.set(user.oid, user);
-                    app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
-                    let conversations = await app.graph.LoadConversations(user.oid);
-                    for (const conversation of conversations) {
-                        app.conversationManager.updateConversationsByUser(user.oid, conversation); //! TO FIX:  will do a write 
-                    }
+        this.ready = new Promise(async (resolve, reject) => {
+            let users = await this.mongoCollection.find().toArray();
+            console.log(`Loaded users: ${JSON.stringify(users, null, 2)}`);
+            for (const user of users) {
+                this.data.set(user.oid, user);
+                app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
+                let conversations = await app.graph.LoadConversations(user.oid);
+                for (const conversation of conversations) {
+                    app.conversationManager.updateConversationsByUser(user.oid, conversation); //! TO FIX:  will do a write 
                 }
-                resolve();
-            });
+            }
+            resolve();
         });
     }
 

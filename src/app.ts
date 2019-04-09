@@ -28,6 +28,7 @@ export class AppConfig {
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
 }
 
+
 if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 class App {

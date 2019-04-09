@@ -7,18 +7,17 @@ import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types
 
 
 // Create the Web Server
-export class Server extends http.Server {
+export class Server  {
+    server : restify.Server;
     constructor(port: string, requestListener?: (req: http.IncomingMessage, res: http.ServerResponse) => void) {
-        super(requestListener);
-        let This = <http.Server>this;
+        // super(requestListener);
 
-        let httpServer = restify.createServer(<restify.ServerOptions>{ maxParamLength: 1000 });
-        This = httpServer; // TO DO - does this really work?
+        this.server = restify.createServer(<restify.ServerOptions>{ maxParamLength: 1000 });
 
+        let httpServer = this.server;
         let authManager = app.authManager;
         let graphHelper = app.graph;
         let bot = app.bot;
-
 
         httpServer.pre((req, res, next) => {
             res.header("Access-Control-Allow-Origin", "*");
@@ -214,7 +213,8 @@ export class Server extends http.Server {
                 let body : OutlookTask = { status: "completed" };
 
                 await app.graph.patch(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}`, body)
-                    .catch(err => { throw Error(`Notify/patch failed (${err})`) });
+     
+                .catch(err => { throw Error(`Notify/patch failed (${err})`) });
                 let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.Expand}`);
                 res.setHeader('Content-Type', 'text/html');
                 let text = `<pre>${JSON.stringify(data,null,2)}</pre>`;
@@ -264,10 +264,10 @@ export class Server extends http.Server {
         });
     }
 
-    async asyncClose(callback? : () => {}) : Promise<void> {
+    async asyncClose(callback? : () => void) : Promise<void> {
         return new Promise<void>((resolve, reject)=>{
-            this.close(()=>{
-                console.log('Closing httpServer');
+            this.server.close(()=>{
+                console.log('Closed httpServer');
                 if (callback) callback();
                 return resolve();
             })
