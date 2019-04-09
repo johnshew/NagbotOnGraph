@@ -12,29 +12,29 @@
   "author": "Microsoft",
   "license": "MIT",
   "dependencies": {
-    "botbuilder": "^4.2.0",
-    "botbuilder-ai": "^4.2.0",
-    "botframework-config": "^4.2.0",
-    "dotenv": "^6.2.0",
-    "mongodb": "^3.1.10",
+    "botbuilder": "^4.3.4",
+    "botbuilder-ai": "^4.3.4",
+    "botframework-config": "^4.3.4",
+    "mongodb": "^3.2.3",
     "node-fetch": "^2.3.0",
-    "restify": "^7.3.0"
+    "restify": "^7.7.0"
   },
   "devDependencies": {
-    "@microsoft/microsoft-graph-types": "^1.5.0",
+    "@microsoft/microsoft-graph-types": "^1.7.0",
     "@microsoft/microsoft-graph-types-beta": "github:microsoftgraph/msgraph-typescript-typings#beta",
-    "@types/dotenv": "^6.1.0",
-    "@types/jest": "^24.0.9",
-    "@types/mongodb": "^3.1.18",
-    "@types/node-fetch": "^2.1.4",
-    "@types/restify": "^7.2.7",
+    "@types/dotenv": "^6.1.1",
+    "@types/jest": "^24.0.11",
+    "@types/mongodb": "^3.1.22",
+    "@types/node-fetch": "^2.3.0",
+    "@types/restify": "^7.2.9",
     "concurrently": "^4.0.1",
-    "jest": "^24.1.0",
-    "nodemon": "^1.18.9",
-    "ts-jest": "^24.0.0",
-    "tslint": "^5.12.0",
-    "tslint-microsoft-contrib": "^6.0.0",
-    "typescript": "^3.2.4"
+    "dotenv": "^7.0.0",
+    "jest": "^24.7.1",
+    "nodemon": "^1.18.11",
+    "ts-jest": "^24.0.2",
+    "tslint": "^5.15.0",
+    "tslint-microsoft-contrib": "^6.1.0",
+    "typescript": "^3.4.2"
   },
   "engines": {
     "node": ">= 10.0.0"
