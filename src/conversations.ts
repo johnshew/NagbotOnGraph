@@ -40,12 +40,15 @@ export class ConversationManager extends EventEmitter {
 
     }
 
-    updateConversationsByUser(oid: string, conversation: Partial<ConversationReference>) {
-        if (!oid) throw 'oid cannot be null'
-        let conversations = this.conversationsByUser.get(oid) || new Map<string, Partial<ConversationReference>>();
+    updateConversationsByUser(oid: string, conversation: Partial<ConversationReference>, emit = true) {
+        if (!oid) throw 'oid cannot be null';
+        let conversations = this.conversationsByUser.get(oid);
+        if (!conversations) {
+            conversations = new Map<string, Partial<ConversationReference>>();
+            this.conversationsByUser.set(oid, conversations);
+        }
         conversations.set(conversation.conversation.id, conversation);
-        this.conversationsByUser.set(oid, conversations);
-        this.emit('updated', oid, conversation);
+        if (emit) this.emit('updated', oid, conversation);
     }
 
     async processActivityInConversation(adapter: BotAdapter, conversation: Partial<ConversationReference>, logic: (turnContext: TurnContext) => Promise<any>) {
@@ -100,11 +103,11 @@ export class ConversationManager2 extends EventEmitter {
         }
         if (conversation._id) {
             let result = await this.collection.findOneAndUpdate({ _id: conversation._id }, values);
-            if (result.ok != 1) { throw Error('Write failed')}
+            if (result.ok != 1) { throw Error('Write failed') }
         } else {
             let result = await this.collection.insertOne(values);
-            if (result.result.ok != 1) { throw Error('Write failed')}
-            let updated = <Conversation> result.ops[0];
+            if (result.result.ok != 1) { throw Error('Write failed') }
+            let updated = <Conversation>result.ops[0];
             conversation._id = updated._id;
             conversation._lastUpdate = updated._lastUpdate;
         }

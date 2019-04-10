@@ -42,6 +42,7 @@ class App {
     bot?: NagBot;
     conversationManager?: ConversationManager;
     mongoClient?: MongoClient;
+    timer: NodeJS.Timeout;
 
     constructor() {
 
@@ -80,14 +81,27 @@ class App {
                     resolve();
                 });
             } catch (err) {
+                console.log("Initialization failed", err);
                 reject();
             }
         });
+
+        this.timer = setInterval(async () => {
+            try {
+                await app.ready;
+                console.log(`Tick at (${new Date().toLocaleString()})`);
+                await notifications.notify();
+            } catch (err) {
+                console.log('Error in notifications timer', err);
+            }
+        }, 11 * 1000);
+
     }
 
     async close(): Promise<void> {
-        if (!timer) throw new Error('No timer');
-        clearInterval(timer);
+        if (!this.timer) { throw new Error('No timer'); } else {
+            clearInterval(this.timer);
+        }
         await this.httpServer.asyncClose();
         await this.botService.asyncClose();
         await this.mongoClient.close();
@@ -96,13 +110,3 @@ class App {
 }
 
 export var app = new App();
-
-let timer = setInterval(async () => {
-    try {
-        await app.ready;
-        console.log(`Tick at (${new Date().toLocaleString()})`);
-        await notifications.notify();
-    } catch (err) {
-        console.log(err);
-    }
-}, 11 * 1000);

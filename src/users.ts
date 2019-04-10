@@ -24,7 +24,7 @@ export class UsersMap {
                 app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
                 let conversations = await app.graph.LoadConversations(user.oid);
                 for (const conversation of conversations) {
-                    app.conversationManager.updateConversationsByUser(user.oid, conversation); //! TO FIX:  will do a write 
+                    app.conversationManager.updateConversationsByUser(user.oid, conversation, false); // Since loading don't emit updated event.
                 }
             }
             resolve();
