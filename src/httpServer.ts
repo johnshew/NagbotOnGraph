@@ -15,9 +15,6 @@ export class Server  {
         this.server = restify.createServer(<restify.ServerOptions>{ maxParamLength: 1000 });
 
         let httpServer = this.server;
-        let authManager = app.authManager;
-        let graphHelper = app.graph;
-        let bot = app.bot;
 
         httpServer.pre((req, res, next) => {
             res.header("Access-Control-Allow-Origin", "*");
@@ -39,7 +36,7 @@ export class Server  {
         httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
         httpServer.get('/login', (req, res, next) => {
-            let authUrl = authManager.authUrl();
+            let authUrl = app.authManager.authUrl();
             console.log(`redirecting to ${authUrl} `);
             res.redirect(authUrl, next);
         });
@@ -47,7 +44,7 @@ export class Server  {
         httpServer.get('/bot-login', (req, res, next) => {
             let conversationKey = req.query['conversationKey'] || '';
             let location = req.query['redirectUrl'];
-            let authUrl = authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
+            let authUrl = app.authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
             console.log(`redirecting to ${authUrl}`);
             res.redirect(authUrl, next);
         });
@@ -57,8 +54,8 @@ export class Server  {
                 // look for authorization code coming in (indicates redirect from interative login/consent)
                 var code = req.query['code'];
                 if (code) {
-                    let userAuthKey = await authManager.userAuthKeyFromCode(code);
-                    let jwt = authManager.jwtForUserAuthKey(userAuthKey);
+                    let userAuthKey = await app.authManager.userAuthKeyFromCode(code);
+                    let jwt = app.authManager.jwtForUserAuthKey(userAuthKey);
                     let authTokens = app.authManager.userAuthKeyToTokensMap.get(userAuthKey);
                     await app.users.set(jwt.oid, { oid: jwt.oid, authKey: userAuthKey, authTokens: authTokens });
                     res.header('Set-Cookie', 'userId=' + userAuthKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
@@ -105,8 +102,8 @@ export class Server  {
         httpServer.get('/profile', async (req, res, next) => {
             let errorMessage: string | null = null;
             try {
-                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-                let data = await graphHelper.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
+                let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+                let data = await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
                 if (data) {
                     res.header('Content-Type', 'text/html');
                     res.write(`<html><head></head><body><h1>User extension net.shew.nagger</h1>`);
@@ -129,8 +126,8 @@ export class Server  {
             let responseCode: number | null = null;
             let body: OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
             try {
-                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
-                await graphHelper.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
+                let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+                await app.graph.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
             }
             catch (err) {
                 console.log(`patch on user extension failed ${err}`);
@@ -139,10 +136,10 @@ export class Server  {
 
             if (responseCode == 404) try {
                 responseCode = null;
-                let accessToken = await authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+                let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
                 body.extensionName = 'net.shew.nagger';
                 body.id = 'net.shew.nagger'
-                let location = await graphHelper.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', body);
+                let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', body);
             } catch (err) {
                 console.log(`post on user extension failed ${err}`);
                 responseCode = err;
@@ -161,7 +158,7 @@ export class Server  {
         httpServer.get('/notify', async (req, res, next) => {
             let errorMessage: string | null = null;
             try {
-                let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
+                let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
                 let conversations = app.conversationManager.findAllConversations(jwt.oid);
                 conversations.forEach(async c => {
                     await app.conversationManager.processActivityInConversation(app.adapter, c, async turnContext => {
@@ -180,7 +177,7 @@ export class Server  {
 
         httpServer.get('/edit-task', async (req, res, next) => {
             try {
-                let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
+                let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
                 let oid = req.query['oid'];
                 let taskId = req.query['taskid'];
                 if (!jwt || !jwt.oid || !oid || !taskId) throw (`edit-task missing parameters`);
@@ -201,7 +198,7 @@ export class Server  {
 
         httpServer.get('/complete-task', async (req, res, next) => {
             try {
-                let jwt = await authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
+                let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
                 let oid = req.query['oid'];
                 let taskId = req.query['taskid'];
                 if (!jwt || !jwt.oid || !oid || !taskId) throw (`edit-task missing parameters`);

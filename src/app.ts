@@ -32,17 +32,60 @@ export class AppConfig {
 if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
 
 class App {
-    initialized: Promise<void>;
+    ready: Promise<App>;
     users?: UsersMap;
     authManager?: simpleAuth.AuthManager;
     graph?: OfficeGraph;
     httpServer?: httpServer.Server;
-    botService? : NagBotService;
+    botService?: NagBotService;
     adapter?: BotAdapter;
     bot?: NagBot;
     conversationManager?: ConversationManager;
     mongoClient?: MongoClient;
-    async close() : Promise<void> {
+
+    constructor() {
+
+        this.ready = new Promise((resolve, reject) => {
+            try {
+                this.graph = new OfficeGraph();
+
+                this.authManager = new simpleAuth.AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl, AppConfig.authDefaultScopes);
+                this.authManager.on('refreshed', () => {
+                    console.log('refreshed');
+                });
+
+
+                this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
+                this.adapter = this.botService.adapter;
+                this.bot = this.botService.bot;
+                this.adapter.onTurnError = async (turnContext, error) => {
+                    console.error(`\n[botOnTurnError]: ${error}`);
+                };
+
+                this.conversationManager = this.botService.conversationManager;
+                this.conversationManager.on('updated', (oid, conversation) => {
+                    this.graph.StoreConversation(oid, conversation);
+                });
+
+                this.httpServer = new httpServer.Server(AppConfig.httpServerPort);
+
+                MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+                    if (err) { console.log(`Error: ${err}`); return; }
+                    console.log('mongo connected');
+                    this.mongoClient = client;
+                    let db = this.mongoClient.db('Test');
+                    let usersDb = db.collection<User>('users');
+                    this.users = new UsersMap(usersDb);
+                    await this.users.ready;
+                    resolve();
+                });
+            } catch (err) {
+                reject();
+            }
+        });
+    }
+
+    async close(): Promise<void> {
         if (!timer) throw new Error('No timer');
         clearInterval(timer);
         await this.httpServer.asyncClose();
@@ -54,43 +97,12 @@ class App {
 
 export var app = new App();
 
-app.graph = new OfficeGraph();
-
-app.authManager = new simpleAuth.AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl, AppConfig.authDefaultScopes);
-app.authManager.on('refreshed', () => {
-    console.log('refreshed');
-});
-
-
-app.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
-app.adapter = app.botService.adapter;
-app.bot = app.botService.bot;
-app.adapter.onTurnError = async (turnContext, error) => {
-    console.error(`\n[botOnTurnError]: ${error}`);
-};
-
-app.conversationManager = app.botService.conversationManager;
-app.conversationManager.on('updated', (oid, conversation) => {
-    app.graph.StoreConversation(oid, conversation);
-});
-
-app.httpServer = new httpServer.Server(AppConfig.httpServerPort);
-
-app.initialized = new Promise((resolve, reject) => {
-    MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
-        if (err) { console.log(`Error: ${err}`); return; }
-        console.log('mongo connected');
-        app.mongoClient = client;
-        let db = app.mongoClient.db('Test');
-        let usersDb = db.collection<User>('users');
-        app.users = new UsersMap(usersDb);
-        await app.users.ready;
-        resolve();
-    });
-});
-
 let timer = setInterval(async () => {
-    await app.initialized;
-    console.log(`Tick at (${new Date().toLocaleString()})`);
-    await notifications.notify();
+    try {
+        await app.ready;
+        console.log(`Tick at (${new Date().toLocaleString()})`);
+        await notifications.notify();
+    } catch (err) {
+        console.log(err);
+    }
 }, 11 * 1000);

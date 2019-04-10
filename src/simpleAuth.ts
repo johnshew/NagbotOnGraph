@@ -31,10 +31,11 @@ export class AuthManager extends EventEmitter {
 
     userAuthKeyToTokensMap = new Map<string, AuthTokens>(); // UserAuthKey to AuthTokens
 
-    constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) { super(); }
+    constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) {
+        super();
+    }
 
     // clients of the authManager interact with it using userAuthKeys.  These contain no PII and can be shared with a client over protected channels.
-
     // clients get an authKey by redirecting to the authUrl and then obtaining a userAuthKey from redirect back that includes a 'code' on the query string parameter.
 
     authUrl(state: string = ''): string {

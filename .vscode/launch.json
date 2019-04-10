@@ -7,6 +7,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Launch Program",
+            "program": "${workspaceFolder}\\lib\\app.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Jest Tests",
             "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
             "args": [
@@ -17,17 +23,17 @@
         },
         {
             "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}\\lib\\app.js"
-        },
-        {
-            "type": "node",
             "request": "attach",
             "name": "Node: Nodemon",
             "processId": "${command:PickProcess}",
             "restart": true,
             "protocol": "inspector",
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Quick Test",
+            "program": "${workspaceFolder}\\lib\\quickTest.js"
         }
     ]
 }
