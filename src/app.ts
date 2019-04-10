@@ -4,14 +4,12 @@ import * as path from 'path';
 import { MongoClient } from 'mongodb';
 
 import { AuthManager } from './simpleAuth';
-import { Server as HttpServer } from './httpServer';
 import { OfficeGraph } from './officeGraph';
-import { NagBot } from './nagbot';
-import { User, UsersMap } from './users';
+import { Server as AppHttpServer } from './httpServer';
+import { UsersMongo } from './usersMongo';
 import { ConversationManager } from './conversations';
 import { NagBotService } from './nagbotService';
-import { BotAdapter } from 'botbuilder';
-import { notify as NotificationHandler } from './notifications';
+import { notify as notificationHandler } from './notifications';
 
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
@@ -33,54 +31,39 @@ if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { 
 
 class App {
     ready: Promise<App>;
-    users: UsersMap;
+    users: UsersMongo;
+    appHttpServer: AppHttpServer;
+    botService: NagBotService;
+    conversationManager: ConversationManager;
     authManager: AuthManager;
     graph: OfficeGraph;
-    httpServer: HttpServer;
-    botService: NagBotService;
-    adapter: BotAdapter;
-    bot: NagBot;
-    conversationManager: ConversationManager;
-    mongoClient: MongoClient;
     timer: NodeJS.Timeout;
 
     constructor() {
 
-        this.ready = new Promise((resolve, reject) => {
+        this.ready = new Promise(async (resolve, reject) => {
             try {
-                this.graph = new OfficeGraph();
-
                 this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl, AppConfig.authDefaultScopes);
                 this.authManager.on('refreshed', () => {
-                    console.log('refreshed');
+                    console.log('user auth token was refreshed');
                 });
-
-
-                this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort);
-                this.adapter = this.botService.adapter;
-                this.bot = this.botService.bot;
-                this.adapter.onTurnError = async (turnContext, error) => {
-                    console.error(`\n[botOnTurnError]: ${error}`);
-                };
-
-                this.conversationManager = this.botService.conversationManager;
+                this.graph = new OfficeGraph();
+                this.conversationManager = new ConversationManager();
                 this.conversationManager.on('updated', (oid, conversation) => {
+                    console.log('Saving user oid:', oid);
                     this.graph.StoreConversation(oid, conversation);
                 });
+                this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
+                this.botService.adapter.onTurnError = async (turnContext, error) => {
+                    console.error(`[botOnTurnError]: ${error}`);
+                };
+                this.appHttpServer = new AppHttpServer(AppConfig.httpServerPort);
 
-                this.httpServer = new HttpServer(AppConfig.httpServerPort);
-
-                MongoClient.connect(AppConfig.mongoConnection, { useNewUrlParser: true }, async (err, client) => {
-                    if (err) { console.log(`Error: ${err}`); return; }
-                    console.log('mongo connected');
-                    this.mongoClient = client;
-                    let db = this.mongoClient.db('Test');
-                    let usersDb = db.collection<User>('users');
-                    this.users = new UsersMap(usersDb);
-                    await this.users.ready;
-                    resolve();
-                });
-            } catch (err) {
+                this.users = new UsersMongo(AppConfig.mongoConnection);
+                await this.users.ready;
+                resolve();
+            }
+            catch (err) {
                 console.log("Initialization failed", err);
                 reject();
             }
@@ -90,7 +73,7 @@ class App {
             try {
                 await app.ready;
                 console.log(`Tick at (${new Date().toLocaleString()})`);
-                await NotificationHandler();
+                await notificationHandler();
             } catch (err) {
                 console.log('Error in notifications timer', err);
             }
@@ -102,9 +85,9 @@ class App {
         if (!this.timer) { throw new Error('No timer'); } else {
             clearInterval(this.timer);
         }
-        await this.httpServer.asyncClose();
+        await this.appHttpServer.asyncClose();
         await this.botService.asyncClose();
-        await this.mongoClient.close();
+        await this.users.close();
         return;
     }
 }

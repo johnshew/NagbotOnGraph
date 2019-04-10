@@ -67,7 +67,7 @@ export class Server  {
                         // should send verification code to user via web and wait for it on the bot.
                         // ignore for now.
                         let conversation = await app.conversationManager.setOidForConversation(state.key, jwt.oid);
-                        await app.conversationManager.processActivityInConversation(app.adapter, conversation, async (turnContext) => {
+                        await app.botService.processActivityInConversation(conversation, async (turnContext) => {
                             return await turnContext.sendActivity('Got your web connection.');
                         });
                     }
@@ -161,7 +161,7 @@ export class Server  {
                 let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
                 let conversations = app.conversationManager.findAllConversations(jwt.oid);
                 conversations.forEach(async c => {
-                    await app.conversationManager.processActivityInConversation(app.adapter, c, async turnContext => {
+                    await app.botService.processActivityInConversation(c, async turnContext => {
                         await turnContext.sendActivity('Notification');
                     });
                 });

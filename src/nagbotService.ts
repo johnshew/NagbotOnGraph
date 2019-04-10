@@ -1,30 +1,29 @@
 import * as restify from 'restify';
-import { Storage, BotFrameworkAdapter, MemoryStorage,  TurnContext } from 'botbuilder';
+import { BotAdapter, BotFrameworkAdapter, ConversationReference, MemoryStorage, Storage, TurnContext } from 'botbuilder';
+import { MicrosoftAppCredentials } from 'botframework-connector';
 
 import { AppConfig } from './app';
 import { NagBot } from './nagbot';
 import { ConversationManager } from './conversations';
 
 interface BotInterface {
-    onTurn(turnContent: TurnContext) : void;
+    onTurn(turnContent: TurnContext): void;
 };
 
 export class NagBotService {
     public bot: NagBot;
     public storage: Storage;
-    public conversationManager : ConversationManager;
     public adapter: BotFrameworkAdapter;
     public httpServer: restify.Server;
 
-    constructor(appId: string, appPassword : string, port: string | number) {
+    constructor(appId: string, appPassword: string, port: string | number, private conversationManager: ConversationManager) {
         this.storage = new MemoryStorage();
-        this.conversationManager = new ConversationManager();
-        
+
         this.adapter = new BotFrameworkAdapter({ appId: AppConfig.appId, appPassword: AppConfig.appPassword });
 
 
         try {
-            this.bot = new NagBot ({ store: this.storage, conversationManager : this.conversationManager});
+            this.bot = new NagBot({ store: this.storage, conversationManager: this.conversationManager });
         } catch (err) {
             console.error(`[botInitializationError]: ${err}`);
             process.exit();
@@ -44,9 +43,21 @@ export class NagBotService {
         });
     }
 
-    async asyncClose(callback? : () => {}) : Promise<void> {
-        return new Promise<void>((resolve, reject)=>{
-            this.httpServer.close(()=>{
+    async processActivityInConversation(conversation: Partial<ConversationReference>, logic: (turnContext: TurnContext) => Promise<any>) {
+        try {
+            MicrosoftAppCredentials.trustServiceUrl(conversation.serviceUrl);
+            await this.adapter.continueConversation(conversation, async (turnContext) => {
+                return await logic(turnContext);
+            });
+        } catch (err) {
+            console.log('problem running activity in conversation.');
+            // throw err;
+        }
+    }
+
+    async asyncClose(callback?: () => {}): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this.httpServer.close(() => {
                 console.log('Closed nagbotService');
                 if (callback) callback();
                 return resolve();

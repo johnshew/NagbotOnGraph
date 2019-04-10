@@ -42,7 +42,7 @@ export async function notify() {
                 let conversations = app.conversationManager.findAllConversations(oid);
                 for await (const conversation of conversations) {
                     console.log(`Sending notificaton to ${conversation.conversation.id}`)
-                    await app.conversationManager.processActivityInConversation(app.adapter, conversation, async turnContext => {
+                    await app.botService.processActivityInConversation(conversation, async turnContext => {
                         try {
                             let dueMessage = (policy.daysUntilDue > 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;
                             let editMessage = `http://localhost:8080/complete-task?oid=${encodeURIComponent(oid)}&taskid=${encodeURIComponent(task.id)}`;

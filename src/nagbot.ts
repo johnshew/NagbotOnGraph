@@ -5,14 +5,7 @@ import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
 import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { ConversationManager} from './conversations';
-
-
-
-
-export interface UserStatus {
-    oid?: string;
-    authKey?: string;
-}
+import { User } from './user';
 
 class ConversationStatus {
     oid: string = null;
@@ -26,7 +19,7 @@ export interface NagBotConfig {
 
 export class NagBot {
     private userState: UserState;
-    private userAccessor: StatePropertyAccessor<UserStatus>;
+    private userAccessor: StatePropertyAccessor<User>;
     private conversationState: ConversationState;
     private conversationAccessor: StatePropertyAccessor<ConversationStatus>;
 
@@ -43,7 +36,7 @@ export class NagBot {
 
         // Create the state property accessors for the conversation data and user profile.
         this.conversationAccessor = this.conversationState.createProperty<ConversationStatus>('conversationData');
-        this.userAccessor = this.userState.createProperty<UserStatus>('userData');
+        this.userAccessor = this.userState.createProperty<User>('userData');
     }
 
     /**
