@@ -5,7 +5,7 @@ import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
 import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { ConversationManager} from './conversations';
-import { User } from './user';
+import { User } from './users';
 
 class ConversationStatus {
     oid: string = null;

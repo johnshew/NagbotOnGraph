@@ -1,15 +1,16 @@
 import { Collection, MongoClient } from 'mongodb';
 
 import { app } from './app';
-import { User } from './user';
+import { User, Users } from './users';
 
-export class UsersMongo {
-    data = new Map<string, User>();
+export class UsersMongo extends Users {
+    
     mongoClient: MongoClient;
     mongoCollection: Collection<User>;
-    public ready: Promise<UsersMongo>;
+    ready : Promise<UsersMongo>;
 
     constructor(mongoConnection: string) {
+        super();
         this.ready = new Promise<UsersMongo>(async (resolve, reject) => {
             MongoClient.connect(mongoConnection, { useNewUrlParser: true }, async (err, client) => {
                 if (err) { console.log(`Error: ${err}`); return; }
@@ -32,29 +33,12 @@ export class UsersMongo {
         });
     }
 
-    get(oid: string) { return this.data.get(oid); }
-
-    async set(oid: string, user: User) {
-        this.data.set(oid, user);
-        let op = await this.mongoCollection.update({ "oid": oid }, user, { upsert: true });
-        console.log(op.result.ok == 1 ? `stored user` : `write failure`);
-    }
-
-
-    forEach(callback: (value: User, key: string, map: UsersMongo) => void, thisArg?: any) {
-        this.data.forEach((u, k, m) => { callback(u, k, this); }, thisArg);
-    }
-
-    [Symbol.iterator](): IterableIterator<[string, User]> {
-        let iterator: IterableIterator<[string, User]> = this.data.entries();
-        return iterator;
-    }
-
-    async close(callback? : () => any) : Promise<void> {
-        return new Promise((resolve,reject) => {
+    async close(callback?: () => any): Promise<void> {
+        return new Promise((resolve, reject) => {
             this.mongoClient.close(() => {
                 resolve();
             })
         });
     }
 }
+

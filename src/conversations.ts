@@ -48,3 +48,4 @@ export declare interface ConversationManager {
 }
 
 
+let c = new ConversationManager();

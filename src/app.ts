@@ -61,6 +61,7 @@ class App {
 
                 this.users = new UsersMongo(AppConfig.mongoConnection);
                 await this.users.ready;
+                
                 resolve();
             }
             catch (err) {
