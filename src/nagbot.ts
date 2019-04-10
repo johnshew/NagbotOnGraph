@@ -75,7 +75,7 @@ export class NagBot {
                         }
 
                         conversation.tempVerficationKey = generateSecretKey();
-                        this.conversationManager.updateConversationByTempKey(conversation.tempVerficationKey, TurnContext.getConversationReference(activity));
+                        this.conversationManager.trackConversationByTempKey(conversation.tempVerficationKey, TurnContext.getConversationReference(activity));
                         // await this.conversationAccessor.set(turnContext, conversation);
                         // await this.conversationState.saveChanges(turnContext);
 

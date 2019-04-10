@@ -24,9 +24,7 @@ export class UsersMongo extends Users {
                     this.data.set(user.oid, user);
                     app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
                     let conversations = await app.graph.LoadConversations(user.oid);
-                    for (const conversation of conversations) {
-                        app.conversationManager.updateConversationsByUser(user.oid, conversation, false); // Since loading don't emit updated event.
-                    }
+                    app.conversationManager.load(user.oid, conversations);
                 }
                 return resolve(this);
             });
