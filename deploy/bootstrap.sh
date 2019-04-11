@@ -1,9 +1,11 @@
 #!/bin/bash
 set -x
+version=1.0
+echo "Nagbot Deployment Version: $version"
 
 #config values
-export RgName=jtscript17
-export ClusterName=jtcluster17
+export RgName=jtscript20
+export ClusterName=jtcluster20
 export NodeCount=1
 
 echo cluster-name
@@ -17,23 +19,13 @@ az aks get-credentials --resource-group=$RgName --name=$ClusterName
 #Install Helm (TODO: Implement check to see if we already have helm.)
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash # installs latest because we like to live on the edge.
 
-#Create the service account for tiller on the cluster
-kubectl apply -f helm-rbac.yaml
-
-#Init helm
-helm init --history-max=200 --service-account=tiller
-
-#Add Weaveworks chart repo.
-helm repo add weaveworks https://weaveworks.github.io/flux
-
-#Deploy flux via Helm
-helm install --name flux \
---set git.url=git@github.com:jatrott/flux-get-started \
---namespace flux \
-weaveworks/flux
+#Deploy flux via YML
+kubectl apply -f fluxdeploy
 
 #Install fluxCTL
 curl -L https://github.com/weaveworks/flux/releases/download/1.12.0/fluxctl_linux_amd64 -o /usr/local/bin/fluxctl
 chmod a+x /usr/local/bin/fluxctl
 
-#Inject correct key to flux
+# The flux identiy key
+sleep 30
+fluxctl identity
