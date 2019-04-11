@@ -49,9 +49,9 @@ class App {
                 });
                 this.graph = new OfficeGraph();
                 this.conversationManager = new ConversationManager();
-                this.conversationManager.on('updated', (oid, conversation) => {
+                this.conversationManager.on('updated', (oid, conversation, conversations) => {
                     console.log('Saving user oid:', oid);
-                    this.graph.StoreConversation(oid, conversation);
+                    this.graph.storeConversations(oid, conversations.findAll(oid));
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
@@ -61,6 +61,7 @@ class App {
 
                 this.users = new UsersMongo(AppConfig.mongoConnection);
                 await this.users.ready;
+                
                 resolve();
             }
             catch (err) {
