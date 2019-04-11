@@ -23,7 +23,7 @@ export class UsersMongo extends Users {
                 for (const user of users) {
                     this.data.set(user.oid, user);
                     app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
-                    let conversations = await app.graph.LoadConversations(user.oid);
+                    let conversations = await app.graph.loadConversations(user.oid);
                     app.conversationManager.load(user.oid, conversations);
                 }
                 return resolve(this);

@@ -28,7 +28,7 @@ export class ConversationManager extends EventEmitter {
         let exists = conversations.find((x) => compare(x,conversation));
         if (exists) throw "currently not supporting updates"
         conversations.push(conversation);
-        this.emit('updated', oid, conversation);
+        this.emit('updated', oid, conversation, this);
     }
 
     load(oid: string, conversations: Partial<ConversationReference>[]) {
@@ -50,8 +50,8 @@ export class ConversationManager extends EventEmitter {
 }
 
 export declare interface ConversationManager {
-    on(event: 'updated', listener: (oid: string, conversation: Partial<ConversationReference>) => void): this;
-    emit(event: 'updated', oid: string, conversation: Partial<ConversationReference>): boolean
+    on(event: 'updated', listener: (oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager) => void): this;
+    emit(event: 'updated', oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager): boolean
     // on(event: string, listener: Function): this;
     // emit(event: string | symbol, ...args : any[]) : boolean;
 }
