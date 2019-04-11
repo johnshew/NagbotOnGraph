@@ -46,7 +46,7 @@
 
 # Useful
 
-* ssh -R 80:localhost:3978 serveo.net
+* ssh -R nagbot:80:localhost:3978 serveo.net
 * https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval
 * https://docs.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/complex-types-for-mail-contacts-calendar#MessageResource
 * docker build -t foo .

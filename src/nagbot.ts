@@ -5,7 +5,7 @@ import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
 import { Activity, ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
 import { ConversationManager} from './conversations';
-import { User } from './user';
+import { User } from './users';
 
 class ConversationStatus {
     oid: string = null;
@@ -75,7 +75,7 @@ export class NagBot {
                         }
 
                         conversation.tempVerficationKey = generateSecretKey();
-                        this.conversationManager.updateConversationByTempKey(conversation.tempVerficationKey, TurnContext.getConversationReference(activity));
+                        this.conversationManager.addUnauthenticatedConversation(conversation.tempVerficationKey, TurnContext.getConversationReference(activity));
                         // await this.conversationAccessor.set(turnContext, conversation);
                         // await this.conversationState.saveChanges(turnContext);
 

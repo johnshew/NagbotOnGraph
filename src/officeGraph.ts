@@ -64,27 +64,13 @@ export class OfficeGraph {
     readonly FilterNotCompletedAndNagMeCategory = "$filter=(status ne 'completed') and (categories/any(a:a eq 'NagMe'))";
     readonly FilterNagMeCategory = "$filter=(categories/any(a:a eq 'NagMe'))";
 
-    public async  StoreConversation(oid: string, conversation: Partial<ConversationReference>) {
-
-        // Will read then write.  No way to do a partial update on an extension.  Should be checking etags.
+    public async  storeConversations(oid: string, conversations: Partial<ConversationReference>[]) {
 
         console.log(`oid: ${oid}
-    conversation: ${JSON.stringify(conversation,null,2)}`);
+    conversation: ${JSON.stringify(conversations,null,2)}`);
 
         let accessToken = await app.authManager.accessTokenForOid(oid);
         let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
-
-        let conversations: any[] = data.conversations || [];
-
-        let index = conversations.findIndex((v) => {
-            if (v.conversation.id == conversation.conversation.id && v.user.id == conversation.user.id) return true;
-        });
-
-        if (index == -1) {
-            conversations.push(conversation);
-        } else {
-            conversations[index] = conversation;
-        }
 
         data.conversations = conversations;
 
@@ -110,7 +96,7 @@ export class OfficeGraph {
         }
     }
 
-    public async  LoadConversations(oid: string) {
+    public async  loadConversations(oid: string) {
         let accessToken = await app.authManager.accessTokenForOid(oid);
         let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
 

@@ -39,7 +39,7 @@ export async function notify() {
                 if (!policy.notify) continue;
 
                 console.log(`Task ${task.id}(${task.subject}) is ready for in policy`);
-                let conversations = app.conversationManager.findAllConversations(oid);
+                let conversations = app.conversationManager.findAll(oid);
                 for await (const conversation of conversations) {
                     console.log(`Sending notificaton to ${conversation.conversation.id}`)
                     await app.botService.processActivityInConversation(conversation, async turnContext => {
