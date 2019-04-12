@@ -29,7 +29,8 @@ class JWT {
 
 export class AuthManager extends EventEmitter {
 
-    userAuthKeyToTokensMap = new Map<string, AuthTokens>(); // UserAuthKey to AuthTokens
+    private userAuthKeyToTokensMap = new Map<string, AuthTokens>(); // UserAuthKey to AuthTokens
+
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) {
         super();
@@ -111,7 +112,7 @@ export class AuthManager extends EventEmitter {
         this.scopes.concat(scopes);
     }
 
-    private getTokensForUserAuthKey(authKey: string): AuthTokens | null {
+    getTokensForUserAuthKey(authKey: string) {
         let tokens = this.userAuthKeyToTokensMap.get(authKey);
         if (!tokens) return null;
         return tokens;

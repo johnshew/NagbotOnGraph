@@ -22,13 +22,13 @@
     <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
     <script src="https://unpkg.com/vuesax/dist/vuesax.umd.js"></script> <!-- For sidebar -->
 
-    <script src='./pages/home.vue.js'></script>
+    <script src='./pages/home.vue.js'></script>    
     <script src='./pages/tasks.vue.js'></script>
+    <script src='./pages/tests.vue.js'></script>
 
 </head>
 
 <body>
-    <!-- Our application root element -->
     <div class="container body-content">
         <div id="app" v-cloak>
             <router-link to="/home">
@@ -37,7 +37,10 @@
             <router-link to="/tasks">
                 <b-button>Tasks</b-button>
             </router-link>
-            <b-button href='./test.html'>Tests</b-button>
+            <router-link to="/tests">
+                <b-button>Tests</b-button>
+            </router-link>
+            <!-- <b-button href='./test.html'>Tests</b-button> -->
             <router-view></router-view>
         </div>
     </div>
@@ -53,7 +56,12 @@
         {
             path: '/tasks',
             component: spaTasks
-        }];
+        },
+        {
+            path: '/tests',
+            component: spaTests
+        }
+    ];
 
         let router = new VueRouter({ routes });
 
