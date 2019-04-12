@@ -1,16 +1,16 @@
  # MVP
 * Host in the cloud - kubernetes with mongo?
-* Do work in branch and PR into main.
-* Add a test suite - jest
-* Not doing a big office query office every time.  Maybe remember a highwater mark?
 
 # Consider
 * For the URL - consider having a TTL buffer and use shorter URLs.   Make it easier for sms channel.  
 * Do we want an SMS channel - probably better to nag directly using MMS.
-* Do we want to put the conversations into Monngo - see ConversationManager2 in conversations.ts
 
 # MVP completed
 
+* Do we want to put the conversations into Monngo - see ConversationManager2 in conversations.ts? Decision is not for now.
+* Do work in branch and PR into main.
+* Add a test suite - jest
+* Not doing a big office query office every time.  Maybe remember a highwater mark?
 * User sets a category (not needed initially on test account) (done)
 * Then login to at least one bot and signin. (done)
 * Then for "nag marked" incomplete tasks send notifications to associated bot channels. (done)
@@ -44,16 +44,16 @@
 * P3 - Factored interfaces for User. (done)
 * P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
 
-# Useful
-
+# Key commands
 * ssh -R nagbot:80:localhost:3978 serveo.net
-* https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval
-* https://docs.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/complex-types-for-mail-contacts-calendar#MessageResource
 * docker build -t foo .
 * docker run -p 8080:8080 -p 3978:3978 tag
 
-# Futures 
+# Notes
+* https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval
+* https://docs.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/complex-types-for-mail-contacts-calendar#MessageResource
 
+# Futures 
 * UX.  Need one.  Wonder about resurrecting the React Office work.
 * UX and data model.  Would be nice to have auto-updating local data - Graph delta queries?  Simplest in the short term is just to get JSON data structures every time.
 * Easy signin. With the new URL approach pretty easy to create a URL with a short temp user key along with a shortened URL to signin and connect it.  Later could also send a QR code so no typing required on a mobile phone.  The mobile device is likely logged in or has password stored.
@@ -61,18 +61,12 @@
 
 
 # Extensions
-
 * String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast
 * String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences
 * net.shew.nagbot preferences { currentTimeZone: 'PST'; startOfDay: "10:00", endOfDay: "22:00"  } 
 
 # Important requests
-
 * <https://graph.microsoft.com/beta/me/outlook/tasks?$filter=singleValueExtendedProperties/any(ep: ep/id eq 'String {66f5a359-4659-4830-9070-00047ec6ac6f} Name Name'  and ep/value ne null)>
-
 * <https://graph.microsoft.com/beta/me/outlook/tasks/AQMkADVlODY3OTU0LWVmM2ItNDk0Ny1iMmE5LWM4NjU2ODkxZDRlZABGAAADOck53Xrdekip5VmJ-UgvkQcA8UNYI919NUiSijv182fGeQAAAgESAAAA8UNYI919NUiSijv182fGeQACPjiePgAAAA==?$expand=singleValueExtendedProperties($filter=id eq 'String {66f5a359-4659-4830-9070-00047ec6ac6f} Name Name')>
-
 * <https://graph.microsoft.com/beta/me/outlook/tasks?$filter=singleValueExtendedProperties/any(ep: ep/id eq 'String {66f5a359-4659-4830-9070-00047ec6ac6f} Name Name'  and ep/value ne null)&$expand=singleValueExtendedProperties($filter=id eq 'String {66f5a359-4659-4830-9070-00047ec6ac6f} Name Name')>
-
-
 * curl -v -H "Content-Type: application/json" --data "{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }" -X PATCH http://127.0.0.1:8080/api/v1.0/tasks/AQMkADVlODY3OTU0LWVmM2ItNDk0Ny1iMmE5LWM4NjU2ODkxZDRlZABGAAADOck53Xrdekip5VmJ-UgvkQcA8UNYI919NUiSijv182fGeQAAAgESAAAA8UNYI919NUiSijv182fGeQACPjiePgAAAA== --cookie "userId=9af3afc2170fb95ff519b121df5011c2"

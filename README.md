@@ -1,6 +1,5 @@
 # NagbotOnGraph
 
-## To Do
+Conversational agent to drive follow up on Microsoft Tasks.
 
-* List tasks to monitor.
-* Every thirty minutes check to see if any tasks need notifications sent to the user.
+[Notes](./notes.md)
