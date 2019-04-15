@@ -1,5 +1,6 @@
 import { ConversationReference } from 'botbuilder';
 import { EventEmitter } from 'events';
+import { emit } from 'cluster';
 
 export class ConversationManager extends EventEmitter {
 
@@ -35,6 +36,11 @@ export class ConversationManager extends EventEmitter {
         this.conversationsByUser.set(oid, conversations); // does not fire updated events
     }
 
+    clear(oid: string) {
+        this.conversationsByUser.clear();
+        this.emit("updated", oid, null, this);
+    }
+
     addUnauthenticatedConversation(tempKey: string, conversation: Partial<ConversationReference>) {
         if (!tempKey) throw 'tempKey can not be null';
         this.unauthenticatedConversationsByTempKey.set(tempKey, conversation);
@@ -52,10 +58,7 @@ export class ConversationManager extends EventEmitter {
 export declare interface ConversationManager {
     on(event: 'updated', listener: (oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager) => void): this;
     emit(event: 'updated', oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager): boolean
-    // on(event: string, listener: Function): this;
-    // emit(event: string | symbol, ...args : any[]) : boolean;
 }
-
 
 export function compare(l : Partial<ConversationReference>, r :Partial<ConversationReference> ) : boolean {
     let result = (l.serviceUrl === r.serviceUrl) && (l.channelId === r.channelId) && (l.conversation.id === r.conversation.tenantId)

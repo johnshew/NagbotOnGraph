@@ -1,6 +1,6 @@
 import { Collection, MongoClient } from 'mongodb';
 
-import { app } from './app';
+import { app, AppConfig } from './app';
 import { User, Users } from './users';
 
 export class UsersMongo extends Users {
@@ -23,8 +23,14 @@ export class UsersMongo extends Users {
                 for (const user of users) {
                     this.data.set(user.oid, user);
                     app.authManager.setTokensForUserAuthKey(user.authTokens.auth_secret, user.authTokens);
-                    let conversations = await app.graph.loadConversations(user.oid);
-                    app.conversationManager.load(user.oid, conversations);
+                    let conversationsData = await app.graph.getConversations(user.oid);
+                    app.conversationManager.load(user.oid, conversationsData);
+                    let conversations = app.conversationManager.findAll(user.oid);
+                    for (const converation of conversations) {
+                        await app.botService.processActivityInConversation(converation,async (turnContext) => {
+                            await app.botService.bot.setUser(turnContext, user);
+                        });
+                    }
                 }
                 return resolve(this);
             });

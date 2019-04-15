@@ -46,8 +46,8 @@
 
 # Key commands
 * ssh  -o ServerAliveInterval=60 -R nagbotapi:80:localhost:3978 -R nagbot:80:localhost:8080 serveo.net
-* docker build -t foo .
-* docker run -p 8080:8080 -p 3978:3978 tag
+* docker build -t nagbot .
+* docker run -p 8080:8080 -p 3978:3978 nagbot
 
 # Notes
 * https://stackoverflow.com/questions/39753969/unable-to-filter-messages-by-recipient-in-microsoft-graph-api-one-or-more-inval

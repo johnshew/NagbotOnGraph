@@ -9,7 +9,7 @@ export async function notify() {
             let accessToken = await app.authManager.accessTokenForOid(oid);
             if (!accessToken) { throw Error(`Unable to acquire access token from ${oid}`); }
             console.log(`User: ${oid}`);
-            let tasks = await app.graph.getNagTasks(accessToken);
+            let tasks = await app.graph.findTasks(accessToken);
             for await (const task of tasks) {
 
                 let policy = checkNotificationPolicy('quickly', task);
