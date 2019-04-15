@@ -1,6 +1,5 @@
 import { ConversationReference } from 'botbuilder';
 import { EventEmitter } from 'events';
-import { emit } from 'cluster';
 
 export class ConversationManager extends EventEmitter {
 
