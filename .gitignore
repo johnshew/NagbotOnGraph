@@ -65,3 +65,4 @@ typings/
 
 # Azure CLI Editor files for VSCode extension
 *.azcli
+bot-authentication-msgraph.bot

@@ -1,4 +1,4 @@
-import { AuthTokens } from './simpleAuth';
+import { AuthContext } from './simpleAuth';
 import { EventEmitter } from 'events';
 import { emit } from 'cluster';
 
@@ -6,28 +6,19 @@ export interface User {
     oid?: string;
     authKey?: string;
     preferredName?: string;
-    authTokens?: AuthTokens;
+    authTokens?: AuthContext;
 };
 
-
-/* export interface UsersMap {
-    get(oid: string): User;
-    set(oid: string, user : User): Promise<void>;
-    foreach(callback: (value: User, key: string, map: Users) => void, thisArg?: any): void;
-    [Symbol.iterator](): IterableIterator<[string, User]>;
-    close(callback?: () => any): Promise<void>;
-    on(event: 'updated', listener: (user: User) => void): this;
-    emit(event: 'updated', user: User): boolean
-}
- */
-export class Users extends EventEmitter {
+export class Users  {
     data = new Map<string, User>();
+    updateParentHook : (oid : string, user: User) => Promise<void> = null;
 
     get(oid: string) { return this.data.get(oid); }
 
     async set(oid: string, user: User) {
         this.data.set(oid, user);
-        emit('updated', oid, user);
+        if (this.updateParentHook) return this.updateParentHook(oid, user);
+        return;
     }
 
     foreach(callback: (value: User, key: string, map: Users) => void, thisArg?: any): void {
@@ -43,9 +34,4 @@ export class Users extends EventEmitter {
         return Promise.resolve();
     }
 
-}
-
-export declare interface Users {
-    on(event: 'updated', listener: (oid: string, user: User) => void): this;
-    emit(event: 'updated', oid: string, user: User): boolean
 }
