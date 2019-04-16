@@ -24,12 +24,16 @@ export class AppConfig {
     static readonly botLoginUrl = AppConfig.httpServerUrl + '/bot-login'
     static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.ReadWrite', 'User.ReadWrite'];
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
+    static readonly luisId = process.env.luisId;
+    static readonly luisKey = process.env.luisKey;
+    static readonly luisStaging = false;
+    static readonly notificationCheckFrequency = 11 * 60 * 1000;
 }
 
-
-if (!AppConfig.appId || !AppConfig.appPassword || !AppConfig.mongoConnection) { throw new Error('No app credentials.'); process.exit(); }
+if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
 
 class App {
+    // This is a namespace to the set of centralized services used throughout the application.
     ready: Promise<App>;
     users: UsersMongo;
     appHttpServer: AppHttpServer;
@@ -51,7 +55,7 @@ class App {
                 this.conversationManager = new ConversationManager();
                 this.conversationManager.on('updated', (oid, conversation, conversations) => {
                     console.log('Saving user oid:', oid);
-                    this.graph.storeConversations(oid, conversations.findAll(oid));
+                    this.graph.setConversations(oid, conversations.findAll(oid));
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
@@ -60,8 +64,9 @@ class App {
                 this.appHttpServer = new AppHttpServer(AppConfig.httpServerPort);
 
                 this.users = new UsersMongo(AppConfig.mongoConnection);
+
                 await this.users.ready;
-                
+
                 resolve();
             }
             catch (err) {
@@ -78,7 +83,7 @@ class App {
             } catch (err) {
                 console.log('Error in notifications timer', err);
             }
-        }, 11 * 1000);
+        }, AppConfig.notificationCheckFrequency);
 
     }
 

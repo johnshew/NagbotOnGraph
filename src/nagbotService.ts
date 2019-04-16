@@ -2,7 +2,6 @@ import * as restify from 'restify';
 import { BotAdapter, BotFrameworkAdapter, ConversationReference, MemoryStorage, Storage, TurnContext } from 'botbuilder';
 import { MicrosoftAppCredentials } from 'botframework-connector';
 
-import { AppConfig } from './app';
 import { NagBot } from './nagbot';
 import { ConversationManager } from './conversations';
 
@@ -18,7 +17,7 @@ export class NagBotService {
 
     constructor(appId: string, appPassword: string, port: string | number, private conversationManager: ConversationManager) {
         this.storage = new MemoryStorage();
-        this.adapter = new BotFrameworkAdapter({ appId: AppConfig.appId, appPassword: AppConfig.appPassword });
+        this.adapter = new BotFrameworkAdapter({ appId: appId, appPassword: appPassword });
 
         try {
             this.bot = new NagBot({ store: this.storage, conversationManager: this.conversationManager });
