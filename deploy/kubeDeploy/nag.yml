@@ -1,0 +1,55 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nagbot-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nagbot
+  replicas: 1 # tells deployment to run 1 pod matching the template
+  template:
+    metadata:
+      labels:
+        app: nagbot
+    spec:
+      containers:
+      - name: nagbot
+        image: johnshew/nagbot
+        env:
+        - name: appId
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: appId
+        - name: appPassword
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: appPassword        
+        - name: mongoConnection
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: mongoConnection        
+        ports:
+        - containerPort: 8080
+          name: restport
+        - containerPort: 3978
+          name: botport
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nagbot
+  labels:
+    app: nagbot
+spec:
+  ports:
+  - name: restport
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+  - name: botport
+    protocol: TCP
+    port: 3978
+    targetPort: 3978
