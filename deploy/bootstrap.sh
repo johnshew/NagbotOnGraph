@@ -1,5 +1,5 @@
 #!/bin/bash
-# Current Pre Reqs: Install Azure CLI, then run AZ Login.
+# Current Pre Reqs: Install Azure CLI, then run AZ Login. Must be run in WSL or on Linux.
 set -x
 version=1.0
 echo "Nagbot Deployment Version: $version"
