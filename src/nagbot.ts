@@ -3,7 +3,7 @@
 
 import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
-import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor } from 'botbuilder';
+import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints } from 'botbuilder';
 import { ConversationManager } from './conversations';
 import { User } from './users';
 import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
@@ -93,9 +93,13 @@ export class NagBot {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {
                     case 'login':
+                        if (!('getUserToken' in turnContext.adapter)) throw new Error(`OAuthPrompt.prompt(): not supported for the current adapter.`);
+                        // Check to ensure channel supports it
+                        let message = MessageFactory.text('Office 365 Login', undefined, InputHints.ExpectingInput);
                         let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
+                        message.attachments = [ oauthCardAttachment];
                         console.log(`Attachment: ${JSON.stringify(oauthCardAttachment, null, 2)}`);
-                        await turnContext.sendActivity({ attachments: [oauthCardAttachment] });
+                        await turnContext.sendActivity(message);
                         return;
                     case 'signin':
                         if (conversation && conversation.oid) {
@@ -207,11 +211,11 @@ export class NagBot {
         }
     }
 
-    async getUser(turnContext : TurnContext) {
+    async getUser(turnContext: TurnContext) {
         return await this.userAccessor.get(turnContext);
     }
 
-    async setUser(turnContext : TurnContext, user : User) {
+    async setUser(turnContext: TurnContext, user: User) {
         await this.userAccessor.set(turnContext, user);
         await this.userState.saveChanges(turnContext);
     }

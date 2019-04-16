@@ -23,14 +23,9 @@ export class AuthContext {
     }
 }
 
-class JWT {
-    oid?: string
-}
-
 export class AuthManager extends EventEmitter {
 
     private userAuthKeyToTokensMap = new Map<string, AuthContext>(); // UserAuthKey to AuthTokens
-
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) {
         super();
@@ -69,37 +64,26 @@ export class AuthManager extends EventEmitter {
                 }
                 data['auth_secret'] = await generateSecretKey();
                 let tokens = new AuthContext(data);
-                this.setAuthContext(tokens);
+                await this.setAuthContext(tokens);
                 return resolve(tokens.authKey);
             }
             catch (err) { return reject(err); }
         });
     }
 
-
     async getAccessTokenFromAuthKey(authKey: string) {
         let tokens = this.userAuthKeyToTokensMap.get(authKey);
         if (tokens && tokens.accessToken && tokens.expiresOn && tokens.expiresOn.valueOf() > Date.now()) { return tokens.accessToken; }
         if (tokens && tokens.refreshToken) {
-            let result = await this.getRefreshTokens(tokens);
-            return result.accessToken;
+            await this.refreshTokens(tokens);
+            return tokens.accessToken;
         }
         throw new Error('Unable to acquire access_token');
     }
-
-
     async getAccessTokenFromOid(oid: string) {
         let tokens = [...this.userAuthKeyToTokensMap.values()].find((t) => t.oid == oid);
         if (!tokens && !tokens.authKey) throw 'oid not found';
-        try {
-            return this.getAccessTokenFromAuthKey(tokens.authKey);
-        } catch (err) {
-            throw err;
-        }
-    }
-
-    addScopes(scopes: string[]) {
-        this.scopes.concat(scopes);
+        return this.getAccessTokenFromAuthKey(tokens.authKey);
     }
 
     getAuthContextFromAuthKey(authKey: string) {
@@ -108,15 +92,16 @@ export class AuthManager extends EventEmitter {
         return tokens;
     }
 
-    setAuthContext(value: AuthContext) {
+    async setAuthContext(value: AuthContext) {
         if (isDeepStrictEqual(this.userAuthKeyToTokensMap.get(value.authKey), value)) return;
         this.userAuthKeyToTokensMap.set(value.authKey, value);
+        await this.getAccessTokenFromAuthKey(value.authKey); // forces refresh if needed
         this.emit('refreshed', value);
     }
 
     // updates access token using refresh token
 
-    private async getRefreshTokens(tokens: AuthContext): Promise<AuthContext> {
+    private async refreshTokens(tokens: AuthContext) {
         return new Promise<AuthContext>(async (resolve, reject) => {
             try {
                 var body = `client_id=${this.appId}`;
@@ -140,12 +125,14 @@ export class AuthManager extends EventEmitter {
                 }
                 data['auth_secret'] = tokens.authKey;
                 let refreshedTokens = new AuthContext(data);
-                this.setAuthContext(refreshedTokens);
-                return resolve(refreshedTokens);
+                await this.setAuthContext(refreshedTokens);
+                return resolve();
             }
             catch (err) { return reject(err); }
         });
     }
+
+    // Attic 
 
     private jwtForUserAuthKey(authKey: string): JWT {
         let tokens = this.userAuthKeyToTokensMap.get(authKey);
@@ -153,13 +140,19 @@ export class AuthManager extends EventEmitter {
         return parseJwt(tokens.idToken);
     }
 
+    private addScopes(scopes: string[]) {
+        this.scopes.concat(scopes);
+    }
+
 }
 
 export declare interface AuthManager {
     on(event: 'refreshed', listener: (authContext: AuthContext) => void): this;
     emit(event: 'refreshed', authContext: AuthContext): boolean
-    // on(event: string, listener: Function): this;
-    // emit(event: string | symbol, ...args : any[]) : boolean;
+}
+
+class JWT {
+    oid?: string
 }
 
 function parseJwt(token: string): JWT {

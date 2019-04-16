@@ -54,7 +54,7 @@ function configureServer(httpServer: restify.Server) {
 
     httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
-    //// Authentication Logic for Web and Bot
+    //// Authentication logic for Web 
 
     httpServer.get('/login', (req, res, next) => {
         let authUrl = app.authManager.authUrl();
@@ -82,7 +82,7 @@ function configureServer(httpServer: restify.Server) {
                     // ignore for now.
                     let conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, authContext.oid);
                     await app.botService.processActivityInConversation(conversation, async (turnContext) => {
-                        return await turnContext.sendActivity('Got your web connection.');
+                        return await turnContext.sendActivity('Connected.');
                     });
                 }
                 res.redirect(state.url, next);
@@ -98,6 +98,8 @@ function configureServer(httpServer: restify.Server) {
         next();
         return;
     });
+
+    // Authentication logic for bot
 
     httpServer.get('/bot-login', (req, res, next) => {
         let conversationKey = req.query['conversationKey'] || '';

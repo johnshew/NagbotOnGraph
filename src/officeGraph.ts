@@ -19,7 +19,7 @@ export class OfficeGraph {
                 let data = await response.json();
                 return resolve(data);
             }
-            return reject(new Error(`GET failed with ${response.status} ${response.statusText}`));
+            return reject(new Error(`GET for ${url} failed with ${response.status} ${response.statusText}`));
         });
     }
 
