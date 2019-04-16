@@ -17,11 +17,20 @@ spec:
         image: johnshew/nagbot
         env:
         - name: appId
-          value: "nagbot"
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: appId
         - name: appPassword
-          value: "changeme"
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: appPassword        
         - name: mongoConnection
-          value: "notAValidMongString"
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: mongoConnection        
         ports:
         - containerPort: 8080
           name: restport
