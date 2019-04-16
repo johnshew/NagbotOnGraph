@@ -1,5 +1,6 @@
  # MVP
 * Host in the cloud - kubernetes with mongo?
+* Create reminder in bot
 
 # Consider
 * For the URL - consider having a TTL buffer and use shorter URLs.   Make it easier for sms channel.  
@@ -22,14 +23,13 @@
 
 # Work Items
 
-* P1 - Send a Nag with a url to nagbot.shew.net/xxx/oid/taskid where id is the Outlook Task id and show UX on that task.
+* P1 - Send a Nag with a url to nagbot.shew.net/task/taskid where id is the Outlook Task id and show UX on that task.
 * P2 - Mark complete.
 * P2 - Host in the cloud.
-* P2 - Reattach LUIS
 * P3 - Multiple Nag Policies.
   * Maybe use a "versioned json object".  
   * Start with NagPreference: { nagType: "simple"; timeZoneRelative?: true /* assumes false */ } 
-  * This would  nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
+  * This would nag once a week until one week then daily in the morning at 10 am (initially then using preference) then on the day of hourly starting at 10 am (initially)
 * P3 - Bug: if a channel doesn't work - then remove it - longer term wait for a period of time.
 * P3 - Use nagbot to mark a conversation as persisted for notifications
 * P3 - Basic task edit.
@@ -41,6 +41,7 @@
 * P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy with a simple policy and last nag time.  (done)
 * P1 - api/v1.0/tasks/id - returns json for task - (done)
 * P2 - Store userKey to oid map more persistently. (done)
+* P2 - Reattach LUIS (done)
 * P3 - Factored interfaces for User. (done)
 * P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
 

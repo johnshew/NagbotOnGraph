@@ -19,7 +19,7 @@ export class OfficeGraph {
                 let data = await response.json();
                 return resolve(data);
             }
-            return reject(response);
+            return reject(new Error(`GET failed with ${response.status} ${response.statusText}`));
         });
     }
 
@@ -38,7 +38,7 @@ export class OfficeGraph {
             if (response.status == 200 || response.status == 204) {
                 return resolve();
             }
-            return reject(new Error(`Patch failed with ${response.status} ${response.statusText}`));
+            return reject(new Error(`PATCH failed with ${response.status} ${response.statusText}`));
         });
     }
 
@@ -59,13 +59,15 @@ export class OfficeGraph {
                 let updated = await response.json();
                 return resolve(updated);            
             }
-            return reject(response);
+            return reject(new Error(`POST failed with ${response.status} ${response.statusText}`));
         });
     }
 
     readonly ExpandNagExtensions = "$expand=singleValueExtendedProperties($filter=id eq 'String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast' or id eq 'String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences')";
     readonly FilterNotCompletedAndNagMeCategory = "$filter=(status ne 'completed') and (categories/any(a:a eq 'NagMe'))";
     readonly FilterNagMeCategory = "$filter=(categories/any(a:a eq 'NagMe'))";
+    readonly PropertyNagLast = 'String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast';
+    readonly PropertyNagPreferences = 'String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences';  //!!! for now just a policy string.
     
     readonly NagExtensions: OutlookTask = {
         singleValueExtendedProperties: [{
@@ -79,10 +81,7 @@ export class OfficeGraph {
 
     async  setConversations(oid: string, conversations: Partial<ConversationReference>[]) {
 
-        console.log(`oid: ${oid}
-    conversation: ${JSON.stringify(conversations, null, 2)}`);
-
-        let accessToken = await app.authManager.accessTokenForOid(oid);
+        let accessToken = await app.authManager.getAccessTokenFromOid(oid);
         // let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
         // data.conversations = conversations;
 
@@ -90,7 +89,7 @@ export class OfficeGraph {
 
         let responseCode: number | null = null;
         try {
-            let accessToken = await app.authManager.accessTokenForOid(oid);
+            let accessToken = await app.authManager.getAccessTokenFromOid(oid);
             await app.graph.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', data)
         }
         catch (err) {
@@ -100,7 +99,7 @@ export class OfficeGraph {
 
         if (responseCode == 404) try {
             responseCode = null;
-            let accessToken = await app.authManager.accessTokenForOid(oid);
+            let accessToken = await app.authManager.getAccessTokenFromOid(oid);
             data.extensionName = 'net.shew.nagger';
             data.id = 'net.shew.nagger'
             let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
@@ -111,7 +110,7 @@ export class OfficeGraph {
     }
 
     async  getConversations(oid: string) {
-        let accessToken = await app.authManager.accessTokenForOid(oid);
+        let accessToken = await app.authManager.getAccessTokenFromOid(oid);
         let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
 
         let conversations: any[] = data && data.conversations || [];
@@ -143,5 +142,4 @@ export class OfficeGraph {
         let data = { ...task, ...this.NagExtensions };
         await this.patch(token, `https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, data);
     }
-
 }

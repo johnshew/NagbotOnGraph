@@ -171,7 +171,7 @@ export class NagBot {
                         const due = results.entities["datetime"];
                         if (text) {
                             let task: OutlookTask = { subject: "test" };
-                            let accessToken = await app.authManager.accessTokenForOid(user.oid);
+                            let accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
                             let savedTask = await app.graph.insertTask(accessToken, task);
                             if (savedTask && savedTask.id) await turnContext.sendActivity(`Created new task (${text}) with id: ${savedTask.id}`);
                         } else {
@@ -183,7 +183,7 @@ export class NagBot {
                     break;
                 case 'Reminder_Find':
                     if (user && user.oid) {
-                        let accessToken = await app.authManager.accessTokenForOid(user.oid);
+                        let accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
                         let tasks = await app.graph.findTasks(accessToken)
                         let tasksList = tasks.reduce((prev, cur) => {
                             return prev + ((prev.length > 0) ? ', ' + cur.subject : cur.subject);

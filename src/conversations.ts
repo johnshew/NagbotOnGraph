@@ -1,5 +1,6 @@
 import { ConversationReference } from 'botbuilder';
 import { EventEmitter } from 'events';
+import { DH_CHECK_P_NOT_SAFE_PRIME } from 'constants';
 
 export class ConversationManager extends EventEmitter {
 
@@ -13,7 +14,7 @@ export class ConversationManager extends EventEmitter {
         return conversations || [];
     }
 
-    find(oid: string, predicate: (value: Partial<ConversationReference>, index: number, obj: Partial<ConversationReference>[]) => boolean ) {
+    find(oid: string, predicate: (value: Partial<ConversationReference>, index: number, obj: Partial<ConversationReference>[]) => boolean) {
         let conversations = this.conversationsByUser.get(oid);
         return conversations.find(predicate)
     }
@@ -25,10 +26,11 @@ export class ConversationManager extends EventEmitter {
             conversations = [];
             this.conversationsByUser.set(oid, conversations);
         }
-        let exists = conversations.find((x) => compare(x,conversation));
-        if (exists) throw "currently not supporting updates"
+        let exists = conversations.find((x) => compare(x, conversation));
+        if (exists) { console.log('Duplicate conversation found.'); return }
         conversations.push(conversation);
         this.emit('updated', oid, conversation, this);
+        return;
     }
 
     load(oid: string, conversations: Partial<ConversationReference>[]) {
@@ -59,7 +61,7 @@ export declare interface ConversationManager {
     emit(event: 'updated', oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager): boolean
 }
 
-export function compare(l : Partial<ConversationReference>, r :Partial<ConversationReference> ) : boolean {
-    let result = (l.serviceUrl === r.serviceUrl) && (l.channelId === r.channelId) && (l.conversation.id === r.conversation.tenantId)
+export function compare(l: Partial<ConversationReference>, r: Partial<ConversationReference>): boolean {
+    let result = (l.serviceUrl === r.serviceUrl) && (l.channelId === r.channelId) && (l.conversation.id === r.conversation.id)
     return result;
 }

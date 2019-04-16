@@ -5,16 +5,16 @@ import * as http from 'http';
 import { app } from './app';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
 import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types-beta';
+import { notifyUser } from './notifications';
 
 export class Server {
     server: restify.Server;
 
     constructor(port: string, requestListener?: (req: http.IncomingMessage, res: http.ServerResponse) => void) {
         this.server = restify.createServer(<restify.ServerOptions>{ maxParamLength: 1000 });
-        let httpServer = this.server;
-        configureServer(httpServer);
-        httpServer.listen(port, () => {
-            console.log(`\n${httpServer.name} listening to ${httpServer.url}`);
+        configureServer(this.server);
+        this.server.listen(port, () => {
+            console.log(`${this.server.name} listening to ${this.server.url}`);
         });
     }
 
@@ -62,23 +62,16 @@ function configureServer(httpServer: restify.Server) {
         res.redirect(authUrl, next);
     });
 
-    httpServer.get('/bot-login', (req, res, next) => {
-        let conversationKey = req.query['conversationKey'] || '';
-        let location = req.query['redirectUrl'];
-        let authUrl = app.authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
-        console.log(`redirecting to ${authUrl}`);
-        res.redirect(authUrl, next);
-    });
 
     httpServer.get('/auth', async (req, res, next) => {
         try {
             // look for authorization code coming in (indicates redirect from interative login/consent)
             var code = req.query['code'];
             if (code) {
-                let userAuthKey = await app.authManager.userAuthKeyFromCode(code);
-                let jwt = app.authManager.jwtForUserAuthKey(userAuthKey);
-                let authTokens = app.authManager.getTokensForUserAuthKey(userAuthKey); // was userAuthKeyToTokensMap.get(userAuthKey);
-                await app.users.set(jwt.oid, { oid: jwt.oid, authKey: userAuthKey, authTokens: authTokens });
+                let userAuthKey = await app.authManager.getAuthKeyFromCode(code);
+                // let jwt = app.authManager.jwtForUserAuthKey(userAuthKey);
+                let authContext = app.authManager.getAuthContextFromAuthKey(userAuthKey); // was userAuthKeyToTokensMap.get(userAuthKey);
+                await app.users.set(authContext.oid, { oid: authContext.oid, authKey: userAuthKey, authTokens: authContext });
                 res.header('Set-Cookie', 'userId=' + userAuthKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
                 let stateString: string = req.query.state;
                 let state: any = {}
@@ -87,7 +80,7 @@ function configureServer(httpServer: restify.Server) {
                 if (state.key) {
                     // should send verification code to user via web and wait for it on the bot.
                     // ignore for now.
-                    let conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, jwt.oid);
+                    let conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, authContext.oid);
                     await app.botService.processActivityInConversation(conversation, async (turnContext) => {
                         return await turnContext.sendActivity('Got your web connection.');
                     });
@@ -101,25 +94,35 @@ function configureServer(httpServer: restify.Server) {
             console.log('Error in /auth processing: ' + reason)
         }
         res.setHeader('Content-Type', 'text/html');
-        res.end(htmlPageMessage('Error','Request to authorize failed','<br/><a href="/">Continue</a>'));
+        res.end(htmlPageMessage('Error', 'Request to authorize failed', '<br/><a href="/">Continue</a>'));
         next();
         return;
     });
+
+    httpServer.get('/bot-login', (req, res, next) => {
+        let conversationKey = req.query['conversationKey'] || '';
+        let location = req.query['redirectUrl'];
+        let authUrl = app.authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
+        console.log(`redirecting to ${authUrl}`);
+        res.redirect(authUrl, next);
+    });
+
 
     //// Endpoints that are included in notifications 
 
     httpServer.get('/task/:taskId/complete', async (req, res, next) => {
         try {
             //// Ignore OID?  Do fetch and than ask about 
-            let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
-            let oid = req.query['oid'];
-            let taskId = req.params['taskid'];
-            if (!jwt || !jwt.oid || !oid || !taskId) throw (`edit-task missing parameters`);
-            if (jwt.oid != oid) {
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            if (!authContext || !authContext.oid) {
                 console.log('not legged in');
-                return res.redirect('/', next);
+                res.setHeader('Content-Type', 'text/html');
+                res.end(htmlPageMessage('Task', 'Not logged in.', '<br/><a href="/">Continue</a>'));
+                return next();
             }
-            let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+            let taskId = req.params['taskId'];
+            if (!taskId) throw (`edit-task missing parameters`);
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(authContext.authKey);
             let body: OutlookTask = { status: "completed" };
 
             await app.graph.patch(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}`, body)
@@ -139,26 +142,28 @@ function configureServer(httpServer: restify.Server) {
 
     httpServer.get('/task/:taskId', async (req, res, next) => {
         try {
-            let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
-            let oid = req.query['oid'];
-            let taskId = req.query['taskid'];
-            if (!jwt || !jwt.oid || !oid || !taskId) throw (`edit-task missing parameters`);
-            if (jwt.oid != oid) {
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            if (!authContext || !authContext.oid) {
                 console.log('not legged in');
-                return res.redirect('/', next);
+                res.setHeader('Content-Type', 'text/html');
+                res.end(htmlPageMessage('Task', 'Not logged in.', '<br/><a href="/">Continue</a>'));
+                return next();
             }
-            let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+            let taskId = req.params['taskId'];
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(authContext.authKey);
             let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.ExpandNagExtensions}`);
             res.setHeader('Content-Type', 'text/html');
-            res.end(htmlPageFromObject('task', '', JSON.stringify(data, null, 2), ""));
+            res.end(htmlPageFromObject('task', '', JSON.stringify(data, null, 2), '<br/><a href="/">Continue</a>'));
             return next();
         } catch (err) {
-            console.log(`/edit-task failed. (${err}()`);
+            console.log(`GET /task failed. (${err}()`);
+            res.setHeader('Content-Type', 'text/html');
+            res.end(htmlPageFromObject('Task', 'Error.  Are you logged in', err, '<br/><a href="/">Continue</a>'));
             return next();
         }
     });
 
-    // APIs - no html - also json
+    // APIs - no html - just json response
 
     httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
         await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.ExpandNagExtensions}`);
@@ -207,7 +212,7 @@ function configureServer(httpServer: restify.Server) {
         let responseCode: number | null = null;
         let body: OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
         try {
-            let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
             await app.graph.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
         }
         catch (err) {
@@ -217,7 +222,7 @@ function configureServer(httpServer: restify.Server) {
 
         if (responseCode == 404) try {
             responseCode = null;
-            let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
             body.extensionName = 'net.shew.nagger';
             body.id = 'net.shew.nagger'
             let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', body);
@@ -237,28 +242,23 @@ function configureServer(httpServer: restify.Server) {
     });
 
     httpServer.get('/test-notify', async (req, res, next) => {
-        let errorMessage: string | null = null;
+        let responseCode: number | null = null;
         try {
-            let jwt = await app.authManager.jwtForUserAuthKey(getCookie(req, 'userId'));
-            let conversations = app.conversationManager.findAll(jwt.oid);
-            conversations.forEach(async c => {
-                await app.botService.processActivityInConversation(c, async turnContext => {
-                    await turnContext.sendActivity('Notification');
-                });
-            });
-            res.header('Content-Type', 'text/html');
-            res.end(`<html><head></head><body><p>Notified</p><a href="/">Continue</a></body></html>`);
-            return next();
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            notifyUser(authContext.oid);
+            res.setHeader('Content-Type', 'text/html');
+            res.end(htmlPageMessage('Test Notifications', 'Done with notifications', '<br/><a href="/">Continue</a></body></html>'));
         }
-        catch (err) { }
-        res.setHeader('Content-Type', 'text/html');
-        res.end(`<html><head></head><body>${errorMessage || "Not authorized."}<br/><a href="/">Continue</a></body></html>`);
-        return next();
+        catch (err) {
+            console.log(`/test-notify failed ${err}`);
+            res.setHeader('Content-Type', 'text/html');
+            res.end(htmlPageMessage('Test Notifications', `Test Notifications failed.<\br>Error: ${err}`, '<br/><a href="/">Continue</a></body></html>'));
+        }
     });
 
 
     httpServer.get('/test-patch', async (req, res, next) => {
-        let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+        let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
         let tasks = await app.graph.get<{ value: OutlookTask[] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.ExpandNagExtensions}`);
         if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
             let task = tasks.value[0];
@@ -274,7 +274,7 @@ function configureServer(httpServer: restify.Server) {
 async function graphGet(req: restify.Request, res: restify.Response, next: restify.Next, url: string, composer?: (result: any) => string) {
     let errorMessage: string | null = null;
     try {
-        let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+        let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
         let data = await app.graph.get(accessToken, url);
         if (data) {
             if (composer) {
@@ -299,7 +299,7 @@ async function graphGet(req: restify.Request, res: restify.Response, next: resti
 async function graphPatch(req: restify.Request, res: restify.Response, next: restify.Next, url: string, data: string) {
     let errorMessage = "";
     try {
-        let accessToken = await app.authManager.accessTokenForAuthKey(getCookie(req, 'userId'));
+        let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
         let result = await app.graph.patch(accessToken, url, data);
         return next();
     }

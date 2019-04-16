@@ -27,6 +27,7 @@ export class AppConfig {
     static readonly luisId = process.env.luisId;
     static readonly luisKey = process.env.luisKey;
     static readonly luisStaging = false;
+    static readonly notificationCheckFrequency = 11 * 60 * 1000;
 }
 
 if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
@@ -63,6 +64,7 @@ class App {
                 this.appHttpServer = new AppHttpServer(AppConfig.httpServerPort);
 
                 this.users = new UsersMongo(AppConfig.mongoConnection);
+
                 await this.users.ready;
 
                 resolve();
@@ -81,7 +83,7 @@ class App {
             } catch (err) {
                 console.log('Error in notifications timer', err);
             }
-        }, 11 * 1000);
+        }, AppConfig.notificationCheckFrequency);
 
     }
 
