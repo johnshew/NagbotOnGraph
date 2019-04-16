@@ -15,9 +15,6 @@ az aks create --resource-group=$RgName --name=$ClusterName --node-count=$NodeCou
 az aks install-cli #(TODO: Implement check to see if we need Kubectl)
 az aks get-credentials --resource-group=$RgName --name=$ClusterName
 
-#Install Helm (TODO: Implement check to see if we already have helm.)
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash # installs latest because we like to live on the edge.
-
 #Deploy flux via YML
 kubectl apply -f fluxdeploy
 
