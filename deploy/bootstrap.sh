@@ -1,14 +1,13 @@
 #!/bin/bash
+# Current Pre Reqs: Install Azure CLI, then run AZ Login.
 set -x
 version=1.0
 echo "Nagbot Deployment Version: $version"
 
 #config values
-export RgName=jtscript20
-export ClusterName=jtcluster20
+export RgName=nagbotdev
+export ClusterName=nagbotcluster
 export NodeCount=1
-
-echo cluster-name
 
 #Provision AKS cluster.
 az group create --location=westus2 --name=$RgName
