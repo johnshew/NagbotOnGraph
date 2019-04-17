@@ -1,4 +1,5 @@
 #!/bin/bash
+# Still in dev, may be unreliable.
 set -x
 
 #config values

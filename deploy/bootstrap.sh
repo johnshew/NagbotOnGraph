@@ -1,23 +1,19 @@
 #!/bin/bash
+# Current Pre Reqs: Install Azure CLI, then run AZ Login. Must be run in WSL or on Linux.
 set -x
 version=1.0
 echo "Nagbot Deployment Version: $version"
 
 #config values
-export RgName=jtscript20
-export ClusterName=jtcluster20
+export RgName=nagbotdev
+export ClusterName=nagbotcluster
 export NodeCount=1
-
-echo cluster-name
 
 #Provision AKS cluster.
 az group create --location=westus2 --name=$RgName
 az aks create --resource-group=$RgName --name=$ClusterName --node-count=$NodeCount --generate-ssh-keys
 az aks install-cli #(TODO: Implement check to see if we need Kubectl)
 az aks get-credentials --resource-group=$RgName --name=$ClusterName
-
-#Install Helm (TODO: Implement check to see if we already have helm.)
-curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash # installs latest because we like to live on the edge.
 
 #Deploy flux via YML
 kubectl apply -f fluxdeploy
