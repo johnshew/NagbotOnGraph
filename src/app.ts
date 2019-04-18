@@ -55,7 +55,8 @@ class App {
                 this.conversationManager = new ConversationManager();
                 this.conversationManager.on('updated', (oid, conversation, conversations) => {
                     console.log('Saving user oid:', oid);
-                    this.graph.setConversations(oid, conversations.findAll(oid));
+                    this.graph.setConversations(oid, conversations.findAll(oid))
+                        .catch((reason) => { throw new Error(`Unable to store conversations ${reason}`) });
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
@@ -96,4 +97,15 @@ class App {
     }
 }
 
-export var app = new App();
+export var app : App = null;
+async function start() {
+    try {
+        app = new App();
+        await app.ready;
+        console.log('app started');
+    } catch (err) {
+        throw new Error(`App start failed ${err}`);
+    }
+}
+
+start();

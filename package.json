@@ -20,21 +20,19 @@
     "restify": "^7.7.0"
   },
   "devDependencies": {
-    "@microsoft/microsoft-graph-types": "^1.7.0",
+    "@microsoft/microsoft-graph-types": "^1.8.0",
     "@microsoft/microsoft-graph-types-beta": "github:microsoftgraph/msgraph-typescript-typings#beta",
     "@types/dotenv": "^6.1.1",
     "@types/jest": "^24.0.11",
-    "@types/mongodb": "^3.1.22",
-    "@types/node-fetch": "^2.3.0",
+    "@types/mongodb": "^3.1.23",
+    "@types/node-fetch": "^2.3.2",
     "@types/restify": "^7.2.9",
     "concurrently": "^4.0.1",
     "dotenv": "^7.0.0",
     "jest": "^24.7.1",
     "nodemon": "^1.18.11",
     "ts-jest": "^24.0.2",
-    "tslint": "^5.15.0",
-    "tslint-microsoft-contrib": "^6.1.0",
-    "typescript": "^3.4.2"
+    "typescript": "^3.4.3"
   },
   "engines": {
     "node": ">= 10.0.0"

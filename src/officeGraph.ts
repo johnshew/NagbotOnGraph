@@ -90,7 +90,7 @@ export class OfficeGraph {
             console.log(`patch on user extension failed ${err} so trying post`);
         }
         try {
-            let data = { extensionName: "net.shew.nagger", id: "new.shew.nagger", conversations };
+            let data = { extensionName: "net.shew.nagger", id: "net.shew.nagger", conversations };
             let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
         } catch(err) {
             throw new Error(`setConversation failed with error ${err} and token ${accessToken.substring(0, 5)}`);
@@ -99,7 +99,7 @@ export class OfficeGraph {
 
     async getConversations(oid: string) {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);
-        let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger');
+        let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger').catch((reason)=>Promise.resolve(null));
         let conversations : any[] = data && data.conversations || [];
         return <Partial<ConversationReference>[]>conversations;
     }
