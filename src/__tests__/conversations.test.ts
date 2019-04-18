@@ -9,7 +9,7 @@ describe("Users", () => {
 
         let item: Partial<ConversationReference> = {
             serviceUrl: 'about:', channelId: "test",
-            conversation: { isGroup: false, conversationType: 'foo', id: 'foo', name: 'foo' }
+            conversation: { isGroup: false, conversationType: 'foo', id: 'foo', name: 'foo', tenantId: 'foo' }
         }
         conversations.load(oid, [item]);
         expect(conversations.findAll(oid)).toHaveLength(1);
