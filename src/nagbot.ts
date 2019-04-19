@@ -3,11 +3,12 @@
 
 import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
-import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints } from 'botbuilder';
+import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints, RecognizerResult } from 'botbuilder';
 import { ConversationManager } from './conversations';
 import { User } from './users';
 import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
 import { OutlookTask } from './officeGraph';
+import { userAgentPolicy } from '@azure/ms-rest-js';
 
 
 type LuisIntents = "None"
@@ -97,7 +98,7 @@ export class NagBot {
                         // Check to ensure channel supports it
                         let message = MessageFactory.text('Office 365 Login', undefined, InputHints.ExpectingInput);
                         let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
-                        message.attachments = [ oauthCardAttachment];
+                        message.attachments = [oauthCardAttachment];
                         console.log(`Attachment: ${JSON.stringify(oauthCardAttachment, null, 2)}`);
                         await turnContext.sendActivity(message);
                         return;
@@ -230,7 +231,55 @@ function guid() { return generateSecretKey(32); }
 
 const helpMessage = `I am NagBot.
 
-You can ask me to do any of the following:
+Here a few of the things we can do
 * Clear channels
-* Create a reminder; e.g. remind me to walk the dog tomorrow noon
-* List reminders: what are my reminders?`;
+* Notifications on
+* Stop noitifications
+
+Reminders and reminders
+* Remind me to walk the dog tomorrow noon
+* List reminders
+* What are my reminders?
+* Find walk the dog
+`;
+
+
+
+interface TurnAction {
+    turnContext: TurnContext;
+    conversation: any;
+    recognized: RecognizerResult,
+    user : User;
+}
+
+function score(intentName: LuisIntents, step: TurnStep): number {
+    let intent = step.recognized.intents[intentName];
+    return (!intent) && 0 || intent.score;
+}
+
+async function preconditionsClearChannelsStep1(step: TurnStep): number {
+    let intents = step.recognized.intents;
+    let s = score("Channels_Clear", step);
+    if (s > 0.8) return s;
+    return 0;
+}
+
+async function clearChannels(step: TurnStep) {
+    let actions = [
+        [score("Channels_Clear", step) > 0.8,
+        async () => {
+            await step.turnContext.sendActivity("Are you sure?");
+            step.conversation.active = true;
+            step.conversation.started = Date.now();
+        }],
+        [step.conversation.started && score('Yes', step) > 0.8,
+        async () => {
+            app.conversationManager.clear(step.user.oid);
+            await step.turnContext.sendActivity('Okay.  Channels are cleared');
+
+        }
+        ]
+
+    ]
+}
+
