@@ -1,5 +1,6 @@
 
-import { app } from '../app';
+
+import { app } from '../src/app';
 
 describe("Working", () => {
     test("Check app configuration", async(done) => {

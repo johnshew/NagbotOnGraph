@@ -12,14 +12,30 @@ export class AuthContext {
     idToken: string;
     oid: string;
 
-    constructor(data: any) {
-        if (!data.access_token || !data.expires_on || !data.id_token || !data.refresh_token || !data.auth_secret) throw new Error('Missing values for AuthToken');
+    loadFromToken(data: any) {
+        if (!data.access_token || !data.expires_on || !data.id_token || !data.refresh_token || !data.auth_secret) {
+            throw new Error('Missing values for AuthToken');
+        }
         this.authKey = data.auth_secret;
         this.accessToken = data.access_token;
         this.idToken = data.id_token;
         this.refreshToken = data.refresh_token;
-        this.expiresOn = data.expires_on;
+        this.expiresOn = new Date(data.expires_on);
         this.oid = parseJwt(this.idToken).oid;
+        return this;
+    }
+
+    loadFromSerialized(data: any) {
+        if (!data.authKey || !data.accessToken || !data.idToken || !data.refreshToken || !data.expiresOn || !data.oid) {
+            throw new Error('Missing values for AuthToken');
+        }
+        this.authKey = data.authKey;
+        this.accessToken = data.accessToken;
+        this.idToken = data.idToken;
+        this.refreshToken = data.refreshToken;
+        this.expiresOn = (typeof data.expiresOn == 'string' && new Date(data.expiresOn)) || data.expiresOn;
+        this.oid = data.oid;
+        return this;
     }
 }
 
@@ -40,8 +56,8 @@ export class AuthManager extends EventEmitter {
         return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${this.defaultRedirectUri}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
     }
 
-    async getAuthKeyFromCode(code: string): Promise<string> {
-        return new Promise<string>(async (resolve, reject) => {
+    async newContextFromCode(code: string): Promise<AuthContext> {
+        return new Promise(async (resolve, reject) => {
             try {
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
@@ -63,50 +79,58 @@ export class AuthManager extends EventEmitter {
                     data['expires_on'] = expires.getTime();
                 }
                 data['auth_secret'] = await generateSecretKey();
-                let tokens = new AuthContext(data);
+                let tokens = new AuthContext().loadFromToken(data);
                 await this.setAuthContext(tokens);
-                return resolve(tokens.authKey);
+                return resolve(tokens);
             }
             catch (err) { return reject(err); }
         });
     }
 
-    async getAccessTokenFromAuthKey(authKey: string) {
-        let tokens = this.userAuthKeyToTokensMap.get(authKey);
-        if (tokens && tokens.accessToken && tokens.expiresOn && tokens.expiresOn.valueOf() > Date.now()) { return tokens.accessToken; }
-        if (tokens && tokens.refreshToken) {
-            await this.refreshTokens(tokens);
-            return tokens.accessToken;
+    async getAccessToken(context: AuthContext) {
+        if (context && context.accessToken && context.expiresOn && context.expiresOn.valueOf() > Date.now().valueOf()) { return context.accessToken; }
+        if (context && context.refreshToken) {
+            await this.refreshTokens(context);
+            return context.accessToken;
         }
         throw new Error('Unable to acquire access_token');
     }
+
+    async getAccessTokenFromAuthKey(authKey: string) {
+        let context = this.getAuthContextFromAuthKey(authKey);
+        if (!context) throw 'authKey not found';
+        return this.getAccessToken(context);
+    }
     async getAccessTokenFromOid(oid: string) {
-        let tokens = [...this.userAuthKeyToTokensMap.values()].find((t) => t.oid == oid);
-        if (!tokens && !tokens.authKey) throw 'oid not found';
-        return this.getAccessTokenFromAuthKey(tokens.authKey);
+        let context = this.getAuthContextFromOid(oid);
+        if (!context) throw 'oid not found';
+        return this.getAccessToken(context);
     }
 
-    getAuthContextFromAuthKey(authKey: string) {
-        let tokens = this.userAuthKeyToTokensMap.get(authKey);
-        if (!tokens) return null;
-        return tokens;
+    getAuthContextFromAuthKey(authKey: string) { return this.userAuthKeyToTokensMap.get(authKey); }
+    getAuthContextFromOid(oid: string) { return [...this.userAuthKeyToTokensMap.values()].find((t) => t.oid == oid); }
+
+    async setAuthContext(context: AuthContext) {
+        if (isDeepStrictEqual(this.userAuthKeyToTokensMap.get(context.authKey), context)) return;
+        this.userAuthKeyToTokensMap.set(context.authKey, context);
+        await this.getAccessToken(context); // forces refresh if needed
+        this.emit('refreshed', context);
     }
 
-    async setAuthContext(value: AuthContext) {
-        if (isDeepStrictEqual(this.userAuthKeyToTokensMap.get(value.authKey), value)) return;
-        this.userAuthKeyToTokensMap.set(value.authKey, value);
-        await this.getAccessTokenFromAuthKey(value.authKey); // forces refresh if needed
-        this.emit('refreshed', value);
+    async loadAuthContext(data: any) {
+        let context = new AuthContext().loadFromSerialized(data);
+        this.userAuthKeyToTokensMap.set(context.authKey, context);
+        await this.getAccessToken(context); // forces refresh if needed
+        this.emit('loaded', context);
     }
 
     // updates access token using refresh token
-
-    private async refreshTokens(tokens: AuthContext) {
+    async refreshTokens(context: AuthContext) {
         return new Promise<AuthContext>(async (resolve, reject) => {
             try {
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
-                body += `&refresh_token=${tokens.refreshToken}`;
+                body += `&refresh_token=${context.refreshToken}`;
                 body += `&redirect_uri=${this.defaultRedirectUri}`;
                 body += `&grant_type=refresh_token&client_secret=${this.appPassword}`;
 
@@ -119,18 +143,20 @@ export class AuthManager extends EventEmitter {
                 });
                 if (res.status !== 200) { return reject('get token failed.'); }
                 var data = await res.json();
-                if (data['expires_in']) {
+                if (!data['expires_on'] && data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
                     data['expires_on'] = expires.getTime();
-                }
-                data['auth_secret'] = tokens.authKey;
-                let refreshedTokens = new AuthContext(data);
-                await this.setAuthContext(refreshedTokens);
+                } else { throw new Error('no expiration data'); }
+                data['auth_secret'] = context.authKey;
+                let update = new AuthContext().loadFromToken(data);
+                console.log(`token ${update.accessToken.substring(0, 5)} expires ${update.expiresOn.toTimeString()} ${data.expires_in && 'in ' + data.expires_in}`);
+                await this.setAuthContext(update);
                 return resolve();
             }
             catch (err) { return reject(err); }
         });
     }
+
 
     // Attic 
 
@@ -149,6 +175,8 @@ export class AuthManager extends EventEmitter {
 export declare interface AuthManager {
     on(event: 'refreshed', listener: (authContext: AuthContext) => void): this;
     emit(event: 'refreshed', authContext: AuthContext): boolean
+    on(event: 'loaded', listener: (authContext: AuthContext) => void): this;
+    emit(event: 'loaded', authContext: AuthContext): boolean
 }
 
 class JWT {

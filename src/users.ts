@@ -10,7 +10,7 @@ export interface User {
 };
 
 export class Users  {
-    data = new Map<string, User>();
+    private data = new Map<string, User>();
     updateParentHook : (oid : string, user: User) => Promise<void> = null;
 
     get(oid: string) { return this.data.get(oid); }

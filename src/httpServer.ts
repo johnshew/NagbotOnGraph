@@ -68,11 +68,9 @@ function configureServer(httpServer: restify.Server) {
             // look for authorization code coming in (indicates redirect from interative login/consent)
             var code = req.query['code'];
             if (code) {
-                let userAuthKey = await app.authManager.getAuthKeyFromCode(code);
-                // let jwt = app.authManager.jwtForUserAuthKey(userAuthKey);
-                let authContext = app.authManager.getAuthContextFromAuthKey(userAuthKey); // was userAuthKeyToTokensMap.get(userAuthKey);
-                await app.users.set(authContext.oid, { oid: authContext.oid, authKey: userAuthKey, authTokens: authContext });
-                res.header('Set-Cookie', 'userId=' + userAuthKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
+                let authContext = await app.authManager.newContextFromCode(code);
+                await app.users.set(authContext.oid, { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext });
+                res.header('Set-Cookie', 'userId=' + authContext.authKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
                 let stateString: string = req.query.state;
                 let state: any = {}
                 try { state = JSON.parse(stateString); } catch (e) { }
