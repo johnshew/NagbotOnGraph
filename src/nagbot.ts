@@ -9,6 +9,7 @@ import { User } from './users';
 import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
 import { OutlookTask } from './officeGraph';
 import { userAgentPolicy } from '@azure/ms-rest-js';
+import { truncate } from 'fs';
 
 
 type LuisIntents = "None"
@@ -25,6 +26,9 @@ type LuisIntents = "None"
     | "Timezone_Adust"
     | "Timezone_Query"
     | "Utilities_Help"
+    | "Yes"
+    | "No"
+    | "Entity"
     ;
 
 class ConversationStatus {
@@ -244,42 +248,98 @@ Reminders and reminders
 `;
 
 
+enum PlanName {
+    "ChannelClear",
+    "ChannelList",
+    "ReminderCreate",
+    "ReminderFind",
+    "ReminderActions"
+}
 
-interface TurnAction {
+class PlanManager {
+    planConversations: Map<PlanName, any>;
     turnContext: TurnContext;
     conversation: any;
-    recognized: RecognizerResult,
-    user : User;
+    recognized: RecognizerResult;
+    user: User;
+    currentContext : TurnContext;
+    turnSource : AsyncIterator<TurnContext>;
+
+
+    score(intentName: LuisIntents): number {
+        let intent = this.recognized.intents[intentName];
+        return (!intent) && 0 || intent.score;
+    }
+
+    recent(seconds: number = 60) {
+        return true;
+    }
+
+    started() { return this.conversation.started; }
+
+    start() { this.conversation.started = true; this.conversation.startedAt = Date.now(); }
 }
 
-function score(intentName: LuisIntents, step: TurnStep): number {
-    let intent = step.recognized.intents[intentName];
-    return (!intent) && 0 || intent.score;
-}
-
-async function preconditionsClearChannelsStep1(step: TurnStep): number {
-    let intents = step.recognized.intents;
-    let s = score("Channels_Clear", step);
-    if (s > 0.8) return s;
-    return 0;
-}
-
-async function clearChannels(step: TurnStep) {
+async function planChannelClear(step: PlanManager) {
     let actions = [
-        [score("Channels_Clear", step) > 0.8,
+        [step.score("Channels_Clear") > 0.8,
         async () => {
             await step.turnContext.sendActivity("Are you sure?");
             step.conversation.active = true;
             step.conversation.started = Date.now();
+            return { active: true }
         }],
-        [step.conversation.started && score('Yes', step) > 0.8,
+        [step.started() && step.recent() && step.score('Yes') > 0.8,
         async () => {
             app.conversationManager.clear(step.user.oid);
             await step.turnContext.sendActivity('Okay.  Channels are cleared');
-
+            return { reset: true }
         }
         ]
-
     ]
+    return actions;
 }
 
+async function planFind(step: PlanManager) {
+    let actions = [
+        [step.score("Reminder_Find") > 0.8,
+        async () => {
+            step.start()
+            step.conversation.text = step.recognized.entities['Reminder_Text'];
+            step.conversation.date['DateTimeV2'];
+            return { again: true };
+        }],
+        [step.started() && step.conversation.text && step.conversation.date && step.score('Yes') > 0.8,
+        async () => {
+            app.conversationManager.clear(step.user.oid);
+            await step.turnContext.sendActivity('Okay.  Channels are cleared');
+            return { reset: true }
+        }],
+        [step.started() && !step.conversation.text && step.conversation.date && step.score('Yes') > 0.8,
+        async () => {
+            app.conversationManager.clear(step.user.oid);
+            await step.turnContext.sendActivity('Okay.  Channels are cleared');
+            return { reset: true }
+        }],
+        [step.started() && step.conversation.text && step.conversation.date && step.score('Yes') > 0.8,
+        async () => {
+            app.conversationManager.clear(step.user.oid);
+            await step.turnContext.sendActivity('Okay.  Channels are cleared');
+            return { reset: true }
+        }
+        ]
+    ]
+    return actions;
+}
+
+async function planPromptReminderText(planManager: PlanManager, prompt: string = null) {
+    if (prompt) { 
+        planManager.currentContext.sendActivity(prompt);
+    }
+    let turnResult = await planManager.turnSource.next();
+    while (!turnResult.done && turnResult.value.intents.score("None") > 0.8);
+    if (turnResult.done) return null;
+    if (turnResult.value.entities.score("Reminder_Text") > 0.8) return turnResult.value.entities["Reminder_Text"].value;
+    return 
+}
+async function planFind()
