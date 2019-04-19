@@ -7,7 +7,7 @@ export class UsersMongo extends Users {
 
     mongoClient: MongoClient;
     mongoCollection: Collection<User>;
-    ready: Promise<UsersMongo>;
+    readonly ready: Promise<UsersMongo>;
 
     constructor(mongoConnection: string) {
         super();
@@ -21,8 +21,8 @@ export class UsersMongo extends Users {
                 let users = await this.mongoCollection.find().toArray();
                 console.log(`Loaded ${users.length} users.`);
                 for (const user of users) {
-                    this.data.set(user.oid, user);
-                    await app.authManager.setAuthContext(user.authTokens);
+                    this.set(user.oid, user);
+                    await app.authManager.loadAuthContext(user.authTokens);
                     let conversationsData = await app.graph.getConversations(user.oid);
                     app.conversationManager.load(user.oid, conversationsData);
                     let conversations = app.conversationManager.findAll(user.oid);
@@ -32,24 +32,22 @@ export class UsersMongo extends Users {
                         });
                     }
                 }
+                // don't hook until after loaded.
+                this.updateParentHook = async (oid, user) => {
+                    let op = await this.mongoCollection.updateOne({ "oid": oid }, { $set: user }, { upsert: true });
+                    console.log(op.result.ok == 1 ? `stored user` : `write failure`);    
+                };
                 return resolve(this);
             });
         });
-
-        this.updateParentHook = async (oid, user) => {
-            let op = await this.mongoCollection.updateOne({ "oid": oid }, { $set: user }, { upsert: true });
-            // let op = await this.mongoCollection.updateOne({ "oid": oid }, user, { upsert: true });
-            console.log(op.result.ok == 1 ? `stored user` : `write failure`);    
-        };
     }
 
     async close(callback?: () => any): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             this.mongoClient.close(() => {
                 resolve();
             })
         });
     }
-
 }
 

@@ -27,7 +27,7 @@ export class AppConfig {
     static readonly luisId = process.env.luisId;
     static readonly luisKey = process.env.luisKey;
     static readonly luisStaging = false;
-    static readonly notificationCheckFrequency = 11 * 60 * 1000;
+    static readonly notificationCheckFrequency = 1 * 60 * 1000;
 }
 
 if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
@@ -55,7 +55,8 @@ class App {
                 this.conversationManager = new ConversationManager();
                 this.conversationManager.on('updated', (oid, conversation, conversations) => {
                     console.log('Saving user oid:', oid);
-                    this.graph.setConversations(oid, conversations.findAll(oid));
+                    this.graph.setConversations(oid, conversations.findAll(oid))
+                        .catch((reason) => { throw new Error(`Unable to store conversations ${reason}`) });
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
@@ -63,9 +64,7 @@ class App {
                 };
                 this.appHttpServer = new AppHttpServer(AppConfig.httpServerPort);
 
-                this.users = new UsersMongo(AppConfig.mongoConnection);
-
-                await this.users.ready;
+                this.users = await new UsersMongo(AppConfig.mongoConnection).ready;
 
                 resolve();
             }
@@ -98,4 +97,15 @@ class App {
     }
 }
 
-export var app = new App();
+export var app : App = null;
+async function start() {
+    try {
+        app = new App();
+        await app.ready;
+        console.log('app started');
+    } catch (err) {
+        throw new Error(`App start failed ${err}`);
+    }
+}
+
+start();

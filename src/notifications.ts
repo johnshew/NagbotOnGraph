@@ -26,12 +26,12 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
 }
 
 async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvaluationResult) {
-    console.log(`Task ${task.subject} is ready for in policy`);
+    console.log(`Task ${task.subject} is in policy with last nag date of ${ policy.lastNag.toString() }`);
     let conversations = app.conversationManager.findAll(oid);
     for await (const conversation of conversations) {
         await app.botService.processActivityInConversation(conversation, async turnContext => {
             try {
-                let dueMessage = (policy.daysUntilDue > 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;
+                let dueMessage = (policy.daysUntilDue >= 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;
                 let editUrl = app.appHttpServer.taskEditUrl(task.id);
                 let now = new Date(Date.now());
 
@@ -51,29 +51,30 @@ async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvalu
 interface NagPolicyEvaluationResult {
     notify: boolean,
     daysUntilDue: number,
-    minsSinceNag: number
+    minsSinceNag: number,
+    lastNag: Date
 }
 
 function evaluateNotificationPolicy(task: OutlookTask): NagPolicyEvaluationResult {
     let dueDate = new Date(Date.parse(task.dueDateTime && task.dueDateTime.dateTime));
     let nagProperties = task.singleValueExtendedProperties;
     let nagPolicy = nagProperties && nagProperties.find((i) => i.id.split(' ')[3] == "NagPreferences");
-    let lastNag = nagProperties && nagProperties.find((i) => i.id.split(' ')[3] == "NagLast");
-    let lastNagDate = lastNag && lastNag.value ? (new Date(Date.parse(lastNag.value))) : new Date(0);
-    let daysSinceNag = Math.trunc((Date.now() - lastNagDate.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
-    let minsSinceNag = Math.trunc((Date.now() - lastNagDate.valueOf()) / (1000 * 60));
+    let lastNagProperty = nagProperties && nagProperties.find((i) => i.id.split(' ')[3] == "NagLast");
+    let lastNag = lastNagProperty && lastNagProperty.value ? (new Date(Date.parse(lastNagProperty.value))) : new Date(0);
+    let daysSinceNag = Math.trunc((Date.now() - lastNag.valueOf()) / (1000 * 60 * 60 * 24));  // Should convert to UTC to do this calc.
+    let minsSinceNag = Math.trunc((Date.now() - lastNag.valueOf()) / (1000 * 60));
     let daysUntilDue = Math.trunc((dueDate.valueOf() - Date.now()) / (1000 * 60 * 60 * 24));
     switch (nagPolicy) {
         case 'daily':
             // once per day
-            return { notify: (daysSinceNag > 0), daysUntilDue, minsSinceNag };
+            return { notify: (daysSinceNag > 0), daysUntilDue, minsSinceNag, lastNag};
 
         case 'standard':
         default:
             // once per hour on day of nag or overdue otherwise once per day
             let dueOrOverdue = daysUntilDue < 1;
             let notify = ((dueOrOverdue && minsSinceNag > 60) || (!dueOrOverdue && minsSinceNag > 24 * 60));
-            return { notify, daysUntilDue, minsSinceNag };
+            return { notify, daysUntilDue, minsSinceNag, lastNag };
     }
 }
 
