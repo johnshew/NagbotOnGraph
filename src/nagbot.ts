@@ -84,7 +84,7 @@ export class NagBot {
 
     async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
-        console.log(`onTurn: ${JSON.stringify(turnContext, null, 2)}`);
+        console.log(`onTurn started`);
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
@@ -97,7 +97,7 @@ export class NagBot {
                         // Check to ensure channel supports it
                         let message = MessageFactory.text('Office 365 Login', undefined, InputHints.ExpectingInput);
                         let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
-                        message.attachments = [ oauthCardAttachment];
+                        message.attachments = [oauthCardAttachment];
                         console.log(`Attachment: ${JSON.stringify(oauthCardAttachment, null, 2)}`);
                         await turnContext.sendActivity(message);
                         return;
@@ -150,7 +150,7 @@ export class NagBot {
                 break;
 
             default:
-                await turnContext.sendActivity(`[${turnContext.activity.type}]-type activity detected.`);
+                await turnContext.sendActivity(`[${turnContext.activity.type}]-type activity detected. ${JSON.stringify(turnContext, null, 2)}`);
                 break;
         }
     }

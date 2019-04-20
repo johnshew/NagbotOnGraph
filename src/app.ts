@@ -18,16 +18,18 @@ export class AppConfig {
     static readonly appId = process.env.appId;
     static readonly appPassword = process.env.appPassword;
     static readonly mongoConnection = process.env.mongoConnection;
-    static readonly httpServerPort = process.env.port || process.env.PORT || '8080';
-    static readonly httpServerUrl = `http://localhost${AppConfig.httpServerPort.length > 0 ? ':' + AppConfig.httpServerPort : ''}`;
-    static readonly authUrl = AppConfig.httpServerUrl + '/auth';
-    static readonly botLoginUrl = AppConfig.httpServerUrl + '/bot-login'
+    static readonly httpLocalServerPort = process.env.port || process.env.PORT || '8080';
+    static readonly publicServer = new URL("https://nagbotdev.shew.net");
+    static readonly authPath = '/auth';
+    static readonly authUrl = new URL(AppConfig.authPath, AppConfig.publicServer); // AppConfig.publicServer.href + AppConfig.authPath;
+    static readonly botLoginPath = '/bot-login';
+    static readonly botLoginUrl = AppConfig.publicServer.href + AppConfig.botLoginPath
     static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.ReadWrite', 'User.ReadWrite'];
     static readonly botPort = process.env.botport || process.env.BOTPORT || 3978;
     static readonly luisId = process.env.luisId;
     static readonly luisKey = process.env.luisKey;
     static readonly luisStaging = false;
-    static readonly notificationCheckFrequency = 1 * 60 * 1000;
+    static readonly notificationCheckFrequency = 10 * 60 * 1000;
 }
 
 if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
@@ -47,7 +49,7 @@ class App {
 
         this.ready = new Promise(async (resolve, reject) => {
             try {
-                this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl, AppConfig.authDefaultScopes);
+                this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl.href, AppConfig.authDefaultScopes);
                 this.authManager.on('refreshed', () => {
                     console.log('user auth token was refreshed');
                 });
@@ -62,7 +64,7 @@ class App {
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
                     console.error(`[botOnTurnError]: ${error}`);
                 };
-                this.appHttpServer = new AppHttpServer(AppConfig.httpServerPort);
+                this.appHttpServer = new AppHttpServer(AppConfig.httpLocalServerPort);
 
                 this.users = await new UsersMongo(AppConfig.mongoConnection).ready;
 

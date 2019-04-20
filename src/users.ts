@@ -7,6 +7,7 @@ export interface User {
     authKey?: string;
     preferredName?: string;
     authTokens?: AuthContext;
+    email?: string;
 };
 
 export class Users  {

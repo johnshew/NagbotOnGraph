@@ -46,7 +46,8 @@
 * P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
 
 # Key commands
-* ssh  -o ServerAliveInterval=60 -R nagbotapi:80:localhost:3978 -R nagbot:80:localhost:8080 serveo.net
+* ssh -o ServerAliveInterval=60 -R nagbotapi.shew.net:80:localhost:3978 -R nagbotdev.shew.net:80:localhost:8080 serveo.net
+  * Will need ssh key
 * docker build -t nagbot .
 * docker run -p 8080:8080 -p 3978:3978 nagbot
 
