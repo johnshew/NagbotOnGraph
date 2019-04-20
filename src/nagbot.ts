@@ -89,7 +89,7 @@ export class NagBot {
 
     async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
-        console.log(`onTurn: ${JSON.stringify(turnContext, null, 2)}`);
+        console.log(`onTurn started`);
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
@@ -155,7 +155,7 @@ export class NagBot {
                 break;
 
             default:
-                await turnContext.sendActivity(`[${turnContext.activity.type}]-type activity detected.`);
+                await turnContext.sendActivity(`[${turnContext.activity.type}]-type activity detected. ${JSON.stringify(turnContext, null, 2)}`);
                 break;
         }
     }

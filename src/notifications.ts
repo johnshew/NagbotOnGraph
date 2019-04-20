@@ -81,6 +81,6 @@ function evaluateNotificationPolicy(task: OutlookTask): NagPolicyEvaluationResul
 function updateNagLast(task: OutlookTask, time: Date) {
     if (!task.singleValueExtendedProperties) { task.singleValueExtendedProperties = []; }
     let lastNagProperty = task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
-    if (!lastNagProperty) task.singleValueExtendedProperties.push(lastNagProperty = { id: app.graph.PropertyNagLast });
+    if (!lastNagProperty) task.singleValueExtendedProperties.push(lastNagProperty = { id: app.graph.propertyNagLast });
     lastNagProperty.value = time.toISOString();
 }

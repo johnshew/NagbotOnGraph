@@ -72,7 +72,7 @@ export class AuthManager extends EventEmitter {
                     },
                     body: body
                 });
-                if (res.status !== 200) { return reject('get token failed.'); }
+                if (res.status !== 200) { return reject(`get newContextFromCode failed.`); }
                 var data = await res.json();
                 if (data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
@@ -141,7 +141,9 @@ export class AuthManager extends EventEmitter {
                     },
                     body: body
                 });
-                if (res.status !== 200) { return reject('get token failed.'); }
+                if (res.status !== 200) { 
+                    return reject(`refresh token for failed with ${ res.status} ${res.statusText} for user ${ context.oid }`); 
+                }
                 var data = await res.json();
                 if (!data['expires_on'] && data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
