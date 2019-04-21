@@ -1,5 +1,6 @@
+
 import { app } from './app';
-import { SingleValueLegacyExtendedProperty, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
+import { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
 
 export async function notify(forceNotifications: boolean = false) {
     if (!app.users) return;
@@ -21,7 +22,9 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
         }
     }
     catch (err) {
-        console.log(`notify failed (${err})`);
+        let context = app.authManager.getAuthContextFromOid(oid);
+        console.log(`notify failed at ${new Date(Date.now()).toString} and token expires ${ context.expiresOn.toString() }
+    ${err}`);
     }
 }
 

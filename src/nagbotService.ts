@@ -30,7 +30,7 @@ export class NagBotService {
         this.httpServer = restify.createServer();
         this.httpServer.name = 'BotServer';
         this.httpServer.listen(port, () => {
-            console.log(`\n${this.httpServer.name} listening to ${this.httpServer.url}`);
+            console.log(`${this.httpServer.name} listening to ${this.httpServer.url}`);
         });
 
         this.httpServer.post('/api/messages', async (req, res) => {

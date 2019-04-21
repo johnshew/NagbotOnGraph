@@ -12,14 +12,17 @@
   "author": "Microsoft",
   "license": "MIT",
   "dependencies": {
+    "@types/debug": "^4.1.4",
     "botbuilder": "^4.3.4",
     "botbuilder-ai": "^4.3.4",
     "botframework-config": "^4.3.4",
+    "debug": "^4.1.1",
     "mongodb": "^3.2.3",
     "node-fetch": "^2.3.0",
     "restify": "^7.7.0"
   },
   "devDependencies": {
+    "@microsoft/recognizers-text-date-time": "^1.1.4",
     "@microsoft/microsoft-graph-types": "^1.8.0",
     "@microsoft/microsoft-graph-types-beta": "github:microsoftgraph/msgraph-typescript-typings#beta",
     "@types/dotenv": "^6.1.1",

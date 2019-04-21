@@ -1,7 +1,13 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+const ENV_FILE = path.join(__dirname, '../.env');
+dotenv.config({ path: ENV_FILE });
 
-import { MongoClient } from 'mongodb';
+import { debug /* as Debug */ } from 'debug';
+let logger = debug('app'); 
+logger.log = console.log.bind(console); // ensure output in node inspector
+console.log('');
+logger('logging started');
 
 import { AuthManager } from './simpleAuth';
 import { OfficeGraph } from './officeGraph';
@@ -10,9 +16,6 @@ import { UsersMongo } from './usersMongo';
 import { ConversationManager } from './conversations';
 import { NagBotService } from './nagbotService';
 import { notify as notificationHandler } from './notifications';
-
-const ENV_FILE = path.join(__dirname, '../.env');
-dotenv.config({ path: ENV_FILE });
 
 export class AppConfig {
     static readonly appId = process.env.appId;
@@ -36,8 +39,8 @@ if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && A
 
 class App {
     // This is a namespace to the set of centralized services used throughout the application.
-    ready: Promise<App>;
-    users: UsersMongo;
+    ready: Promise<App> = null;
+    users: UsersMongo = null;
     appHttpServer: AppHttpServer;
     botService: NagBotService;
     conversationManager: ConversationManager;
@@ -51,14 +54,17 @@ class App {
             try {
                 this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl.href, AppConfig.authDefaultScopes);
                 this.authManager.on('refreshed', () => {
-                    console.log('user auth token was refreshed');
+                    logger('user auth token was refreshed');
                 });
                 this.graph = new OfficeGraph();
                 this.conversationManager = new ConversationManager();
                 this.conversationManager.on('updated', (oid, conversation, conversations) => {
-                    console.log('Saving user oid:', oid);
+                    if (!this.users) throw ('need users');
+                    let user = this.users.get(oid); 
+                    let userConversations = conversations.findAll(oid);
+                    logger(`updating ${userConversations.length } conversations for ${ user.preferredName }`);
                     this.graph.setConversations(oid, conversations.findAll(oid))
-                        .catch((reason) => { throw new Error(`Unable to store conversations ${reason}`) });
+                        .catch((reason) => { throw new Error(`unable to store conversations ${reason}`) });
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
@@ -71,7 +77,7 @@ class App {
                 resolve();
             }
             catch (err) {
-                console.log("Initialization failed", err);
+                logger("initialization failed", err);
                 reject();
             }
         });
@@ -79,17 +85,17 @@ class App {
         this.timer = setInterval(async () => {
             try {
                 await app.ready;
-                console.log(`Tick at (${new Date().toLocaleString()})`);
+                logger(`tick at (${new Date().toString()})`);
                 await notificationHandler();
             } catch (err) {
-                console.log('Error in notifications timer', err);
+                logger('error in notifications timer', err);
             }
         }, AppConfig.notificationCheckFrequency);
 
     }
 
     async close(): Promise<void> {
-        if (!this.timer) { throw new Error('No timer'); } else {
+        if (!this.timer) { throw new Error('no timer'); } else {
             clearInterval(this.timer);
         }
         await this.appHttpServer.asyncClose();
@@ -104,9 +110,9 @@ async function start() {
     try {
         app = new App();
         await app.ready;
-        console.log('app started');
+        logger('started');
     } catch (err) {
-        throw new Error(`App start failed ${err}`);
+        throw new Error(`app start failed ${err}`);
     }
 }
 
