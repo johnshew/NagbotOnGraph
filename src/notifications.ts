@@ -21,7 +21,9 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
         }
     }
     catch (err) {
-        console.log(`notify failed (${err})`);
+        let context = await app.authManager.getAuthContextFromOid(oid);
+        console.log(`notify failed at ${new Date(Date.now()).toString() } with ${err} 
+    for ${JSON.stringify(context,null,4)})`);
     }
 }
 

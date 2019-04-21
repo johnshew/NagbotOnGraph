@@ -151,7 +151,7 @@ export class AuthManager extends EventEmitter {
                 } else { throw new Error('no expiration data'); }
                 data['auth_secret'] = context.authKey;
                 let update = new AuthContext().loadFromToken(data);
-                console.log(`token ${update.accessToken.substring(0, 5)} expires ${update.expiresOn.toTimeString()} ${data.expires_in && 'in ' + data.expires_in}`);
+                console.log(`token ${update.accessToken.substring(0, 5)} expires ${update.expiresOn.toString()} ${data.expires_in && 'in ' + data.expires_in}`);
                 await this.setAuthContext(update);
                 return resolve();
             }

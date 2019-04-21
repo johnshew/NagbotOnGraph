@@ -10,6 +10,8 @@ import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuild
 import { OutlookTask } from './officeGraph';
 import { userAgentPolicy } from '@azure/ms-rest-js';
 import { truncate } from 'fs';
+import { forOfStatement } from '@babel/types';
+import { doesNotReject } from 'assert';
 
 
 type LuisIntents = "None"
@@ -262,8 +264,8 @@ class PlanManager {
     conversation: any;
     recognized: RecognizerResult;
     user: User;
-    currentContext : TurnContext;
-    turnSource : AsyncIterator<TurnContext>;
+    currentContext: TurnContext;
+    turnSource: AsyncIterator<any>;
 
 
     score(intentName: LuisIntents): number {
@@ -302,7 +304,7 @@ async function planChannelClear(step: PlanManager) {
 
 async function planFind(step: PlanManager) {
     let actions = [
-        [step.score("Reminder_Find") > 0.8,
+        [step.score("Reminder_Find") > 0.8 && !step.started(),
         async () => {
             step.start()
             step.conversation.text = step.recognized.entities['Reminder_Text'];
@@ -332,14 +334,55 @@ async function planFind(step: PlanManager) {
     return actions;
 }
 
-async function planPromptReminderText(planManager: PlanManager, prompt: string = null) {
-    if (prompt) { 
+
+
+
+async function* planPromptReminderText(planManager: PlanManager, prompt: string = null) {
+    if (prompt) {
         planManager.currentContext.sendActivity(prompt);
     }
+    yield { done: false, result: undefined }
     let turnResult = await planManager.turnSource.next();
-    while (!turnResult.done && turnResult.value.intents.score("None") > 0.8);
-    if (turnResult.done) return null;
-    if (turnResult.value.entities.score("Reminder_Text") > 0.8) return turnResult.value.entities["Reminder_Text"].value;
-    return 
+    while (!turnResult.done) {        
+        if (turnResult.value.entities.score("Reminder_Text") > 0.8) {
+            let result = turnResult.value.entities["Reminder_Text"].value;
+            yield { done: true, result: result }
+            return;
+        }        
+    }
 }
-async function planFind()
+
+/* class TurnGenerator {
+    foo() { return 'ham'; }
+    ['bar']() { return 'cheese' }
+
+    [Symbol.iterator] = function* () {
+        yield 1;
+        yield 2;
+        yield 1 + 2;
+    };
+
+    [Symbol.asyncIterator] = async function* () {
+        yield 1;
+        yield 1+2;
+    };
+}
+
+let thing = new TurnGenerator();
+async function testThing() {
+    thing.foo();
+    thing['bar']();
+    for (const item of thing) {
+        console.log(item);
+    }
+    for await (const item of thing) {
+        console.log(item)
+    }
+    let foo = thing[Symbol.asyncIterator]();
+    let next = await foo.next();
+    while (!next.done) {
+        console.log(next.value);
+        next = await foo.next();
+    }
+}
+ */
