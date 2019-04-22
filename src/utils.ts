@@ -2,7 +2,7 @@
 // a tagged template for including timestamps and having rational debug output
 // "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"
 
-export function timestamp(literals: TemplateStringsArray, ...items: any[]) {
+export function logger(literals: TemplateStringsArray, ...items: any[]) {
     let result = new Date(Date.now()).toISOString() + " " + literals[0]
     for (let i = 0; i < items.length; i++) {
         let item = items[i];
@@ -24,7 +24,7 @@ function show(item: any) {
             return `[${typeof item} ${JSON.stringify(item).substring(0, 20)}]`;
             break;
         case 'function':
-            return `[${item.toString()}]`;
+            return `[${item.toString().subst}]`;
             break;
         default:
             if (typeof item.toString == 'function') return item.toString();
@@ -34,6 +34,6 @@ function show(item: any) {
 }
 
 if (false) {
-    console.log(timestamp`timestamp log test ${{ foo: 'foo' }} ${console.log} ${ 10 }`);
-    console.log(timestamp`timestamp multiple args test`, new Error('Test'));
+    console.log(logger`log test ${{ foo: 'foo' }} ${ 10 }`);
+    console.log(logger`multiple args test`, new Error('Test'));
 }

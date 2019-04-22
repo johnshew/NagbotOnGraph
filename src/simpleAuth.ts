@@ -4,7 +4,7 @@ import { EventEmitter } from 'events';
 import { default as fetch } from 'node-fetch';
 import { isDeepStrictEqual } from 'util';
 
-import { timestamp } from './utils';
+import { logger } from './utils';
 
 export class AuthContext {
     authKey: string;  // random secret to share with the client.
@@ -86,7 +86,7 @@ export class AuthManager extends EventEmitter {
                 return resolve(tokens);
             }
             catch (err) {
-                console.log(timestamp`error in getContextFromCode`, err);
+                console.log(logger`error in getContextFromCode`, err);
                 return reject(err);
             }
         });
@@ -156,12 +156,12 @@ export class AuthManager extends EventEmitter {
                 } else { throw new Error('no expiration data'); }
                 data['auth_secret'] = context.authKey;
                 let update = new AuthContext().loadFromToken(data);
-                console.log(timestamp`refreshed token ${update.accessToken.substring(0, 20)} now expires ${update.expiresOn.toString()} in ${data.expires_in} seconds`);
+                console.log(logger`refreshed token ${update.accessToken.substring(0, 20)} now expires ${update.expiresOn.toString()} in ${data.expires_in} seconds`);
                 await this.setAuthContext(update);
                 return resolve();
             }
             catch (err) {
-                console.log(timestamp`error refreshing tokens`, err);
+                console.log(logger`error refreshing tokens`, err);
                 return reject(err);
             }
         });

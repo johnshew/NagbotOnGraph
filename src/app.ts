@@ -1,6 +1,6 @@
 
-import { timestamp } from './utils';
-console.log(timestamp`loading app`);
+import { logger } from './utils';
+console.log(logger`loading app`);
 import { AuthManager } from './simpleAuth';
 import { OfficeGraph } from './officeGraph';
 import { Server as AppHttpServer } from './httpServer';
@@ -30,7 +30,7 @@ export class AppConfig {
     static readonly luisId = process.env.luisId;
     static readonly luisKey = process.env.luisKey;
     static readonly luisStaging = false;
-    static readonly notificationCheckFrequency = 5 /* minutes */ * 60 * 1000;
+    static readonly notificationCheckFrequency = 6 /* minutes */ * 60 * 1000;
 }
 
 if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
@@ -52,7 +52,7 @@ class App {
             try {
                 this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl.href, AppConfig.authDefaultScopes);
                 this.authManager.on('refreshed', (context) => {
-                    console.log(timestamp`user auth context was refreshed`, context);
+                    console.log(logger`user auth context was refreshed`, context);
                 });
                 this.graph = new OfficeGraph();
                 this.conversationManager = new ConversationManager();
@@ -60,7 +60,7 @@ class App {
                     if (!this.users) throw ('need users');
                     let user = this.users.get(oid); 
                     let userConversations = conversations.findAll(oid);
-                    console.log(timestamp`updating ${userConversations.length } conversations for ${ user.preferredName }`);
+                    console.log(logger`updating ${userConversations.length } conversations for ${ user.preferredName }`);
                     this.graph.setConversations(oid, conversations.findAll(oid))
                         .catch((reason) => { throw new Error(`unable to store conversations ${reason}`) });
                 });
@@ -75,7 +75,7 @@ class App {
                 resolve();
             }
             catch (err) {
-                console.log(timestamp`initialization failed`, err);
+                console.log(logger`initialization failed`, err);
                 reject();
             }
         });
@@ -83,10 +83,10 @@ class App {
         this.timer = setInterval(async () => {
             try {
                 await app.ready;
-                console.log(timestamp`tick`);
+                console.log(logger`tick`);
                 await notificationHandler();
             } catch (err) {
-                console.log(timestamp`error in notifications timer`, err);
+                console.log(logger`error in notifications timer`, err);
             }
         }, AppConfig.notificationCheckFrequency);
 
@@ -108,7 +108,7 @@ async function start() {
     try {
         app = new App();
         await app.ready;
-        console.log(timestamp`app started`);
+        console.log(logger`app started`);
     } catch (err) {
         throw new Error(`app start failed ${err}`);
     }

@@ -4,7 +4,7 @@ import { ConversationReference } from 'botbuilder';
 import { app } from './app';  //! BUG Should not include this
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
-import { timestamp } from './utils';
+import { logger } from './utils';
 
 export class OfficeGraph {
 
@@ -92,7 +92,7 @@ export class OfficeGraph {
             return;
         }
         catch (err) {
-            console.log(timestamp`patch on user extension failed ${err} so trying post`);
+            console.log(logger`patch on user extension failed ${err} so trying post`);
         }
         try {
             let data = { extensionName: "net.shew.nagger", id: "net.shew.nagger", conversations };
@@ -133,7 +133,7 @@ export class OfficeGraph {
     async updateTask(token: string, task: OutlookTask) {
         let data = { ...this.emptyNagExtensions, ...task };
         await this.patch(token, `https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, data);
-        console.log(timestamp`updated task ${task.subject}`)
+        console.log(logger`updated task ${task.subject}`)
     }
 
     async getProfile(token: string) {
