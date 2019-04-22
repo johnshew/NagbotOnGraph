@@ -1,14 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
 import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints } from 'botbuilder';
 import { ConversationManager } from './conversations';
 import { User } from './users';
 import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
 import { OutlookTask } from './officeGraph';
-import { BaseDateTimeExtractor } from '@microsoft/recognizers-text-date-time'
+import { generateSecretKey } from './simpleAuth';
+
+// import { BaseDateTimeExtractor } from '@microsoft/recognizers-text-date-time'
 
 
 type LuisIntents = "None"
@@ -226,13 +227,6 @@ export class NagBot {
         await this.userState.saveChanges(turnContext);
     }
 }
-
-function generateSecretKey(length: number = 16): string {
-    let buf = randomBytes(length);
-    return buf.toString('hex');
-}
-
-function guid() { return generateSecretKey(32); }
 
 const helpMessage = `I am NagBot.
 

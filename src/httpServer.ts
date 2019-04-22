@@ -7,6 +7,7 @@ import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTem
 import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types-beta';
 import { notifyUser } from './notifications';
 import { User } from './users';
+import { timestamp } from './utils';
 
 export class Server {
     server: restify.Server;

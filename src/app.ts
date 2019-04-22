@@ -1,14 +1,6 @@
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-const ENV_FILE = path.join(__dirname, '../.env');
-dotenv.config({ path: ENV_FILE });
 
-import { debug /* as Debug */ } from 'debug';
-let logger = debug('app'); 
-logger.log = console.log.bind(console); // ensure output in node inspector
-console.log('');
-logger('logging started');
-
+import { timestamp } from './utils';
+console.log(timestamp`loading app`);
 import { AuthManager } from './simpleAuth';
 import { OfficeGraph } from './officeGraph';
 import { Server as AppHttpServer } from './httpServer';
@@ -16,6 +8,12 @@ import { UsersMongo } from './usersMongo';
 import { ConversationManager } from './conversations';
 import { NagBotService } from './nagbotService';
 import { notify as notificationHandler } from './notifications';
+
+
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+const ENV_FILE = path.join(__dirname, '../.env');
+dotenv.config({ path: ENV_FILE });
 
 export class AppConfig {
     static readonly appId = process.env.appId;
@@ -32,7 +30,7 @@ export class AppConfig {
     static readonly luisId = process.env.luisId;
     static readonly luisKey = process.env.luisKey;
     static readonly luisStaging = false;
-    static readonly notificationCheckFrequency = 10 * 60 * 1000;
+    static readonly notificationCheckFrequency = 5 /* minutes */ * 60 * 1000;
 }
 
 if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
@@ -53,8 +51,8 @@ class App {
         this.ready = new Promise(async (resolve, reject) => {
             try {
                 this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl.href, AppConfig.authDefaultScopes);
-                this.authManager.on('refreshed', () => {
-                    logger('user auth token was refreshed');
+                this.authManager.on('refreshed', (context) => {
+                    console.log(timestamp`user auth context was refreshed`, context);
                 });
                 this.graph = new OfficeGraph();
                 this.conversationManager = new ConversationManager();
@@ -62,7 +60,7 @@ class App {
                     if (!this.users) throw ('need users');
                     let user = this.users.get(oid); 
                     let userConversations = conversations.findAll(oid);
-                    logger(`updating ${userConversations.length } conversations for ${ user.preferredName }`);
+                    console.log(timestamp`updating ${userConversations.length } conversations for ${ user.preferredName }`);
                     this.graph.setConversations(oid, conversations.findAll(oid))
                         .catch((reason) => { throw new Error(`unable to store conversations ${reason}`) });
                 });
@@ -77,7 +75,7 @@ class App {
                 resolve();
             }
             catch (err) {
-                logger("initialization failed", err);
+                console.log(timestamp`initialization failed`, err);
                 reject();
             }
         });
@@ -85,10 +83,10 @@ class App {
         this.timer = setInterval(async () => {
             try {
                 await app.ready;
-                logger(`tick at (${new Date().toString()})`);
+                console.log(timestamp`tick at (${new Date().toString()})`);
                 await notificationHandler();
             } catch (err) {
-                logger('error in notifications timer', err);
+                console.log(timestamp`error in notifications timer`, err);
             }
         }, AppConfig.notificationCheckFrequency);
 
@@ -110,10 +108,20 @@ async function start() {
     try {
         app = new App();
         await app.ready;
-        logger('started');
+        console.log(timestamp`app started`);
     } catch (err) {
         throw new Error(`app start failed ${err}`);
     }
 }
 
 start();
+
+
+/*
+import { debug  } from 'debug';
+// import { debug as Debug  } from 'debug';
+let logger = debug('app'); 
+logger.log = console.log.bind(console); // ensure output in node inspector
+console.log('');
+logger('logging started');
+*/

@@ -1,5 +1,5 @@
 import { Collection, MongoClient } from 'mongodb';
-
+import { timestamp } from './utils';
 import { app, AppConfig } from './app';
 import { User, Users } from './users';
 
@@ -15,12 +15,12 @@ export class UsersMongo extends Users {
             MongoClient.connect(mongoConnection, { useNewUrlParser: true }, async (err, client) => {
                 try {
                     if (err) { console.log(`Error: ${err}`); return; }
-                    console.log('mongo connected');
+                    console.log(timestamp`mongo connected`);
                     this.mongoClient = client;
                     let db = this.mongoClient.db('Test');
                     this.mongoCollection = db.collection<User>('users');
                     let users = await this.mongoCollection.find().toArray();
-                    console.log(`Loaded ${users.length} users.`);
+                    console.log(timestamp`loaded users count ${users.length}`);
                     for (const user of users) {
                         try {
                             this.set(user.oid, user);
@@ -34,7 +34,7 @@ export class UsersMongo extends Users {
                                 });
                             }
                         } catch (err) {
-                            console.log(`load failed for user ${user.preferredName} with ${err}`);
+                            console.log(timestamp`load failed for user ${user.preferredName} with ${err}`);
                         }
                     }
 
@@ -45,7 +45,7 @@ export class UsersMongo extends Users {
                     };
                     return resolve(this);
                 } catch (err) {
-                    console.log(`User loading failed with ${err}`);
+                    console.log(timestamp`mongo user load failed with ${err}`);
                     reject(err);
                 }
             })
