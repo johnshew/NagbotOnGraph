@@ -83,7 +83,7 @@ class App {
         this.timer = setInterval(async () => {
             try {
                 await app.ready;
-                console.log(timestamp`tick at (${new Date().toString()})`);
+                console.log(timestamp`tick`);
                 await notificationHandler();
             } catch (err) {
                 console.log(timestamp`error in notifications timer`, err);

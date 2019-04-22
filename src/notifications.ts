@@ -15,7 +15,7 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
     try {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);
         let user = app.users.get(oid);
-        console.log(timestamp`notifying ${user.email} (${oid})`);
+        console.log(timestamp`checking notifications for ${user.email} (${oid})`);
         let tasks = await app.graph.findTasks(accessToken);
         for await (const task of tasks) {
             let policy = evaluateNotificationPolicy(task);
