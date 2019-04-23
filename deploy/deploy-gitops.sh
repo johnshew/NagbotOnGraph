@@ -6,7 +6,7 @@ echo "Nagbot-Gitops Deployment Version: $version"
 
 
 #Deploy flux via YML
-kubectl apply -f fluxdeploy
+kubectl apply -f ./deploy/fluxDeploy
 
 #Install fluxCTL
 curl -L https://github.com/weaveworks/flux/releases/download/1.12.0/fluxctl_linux_amd64 -o /usr/local/bin/fluxctl
