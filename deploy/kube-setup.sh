@@ -16,4 +16,4 @@ az aks install-cli #(TODO: Implement check to see if we need Kubectl)
 az aks get-credentials --resource-group=$RgName --name=$ClusterName
 
 # Set secrets
-kubectl create secret --from-file ./.env
+kubectl create secret generic envfile --from-env-file ./.env
