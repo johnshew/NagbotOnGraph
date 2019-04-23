@@ -4,7 +4,7 @@ import { ConversationReference } from 'botbuilder';
 import { app } from './app';  //! BUG Should not include this
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
-import { logger } from './utils';
+import { logger, retry } from './utils';
 
 export class OfficeGraph {
 
@@ -41,8 +41,13 @@ export class OfficeGraph {
         });
     }
 
-    async patch(accessToken: string, url: string, body: any) {
-        return new Promise<void>(async (resolve, reject) => {
+    async getWithRetry<T>(accessToken: string, url: string, count = 5, delayMs = 1000): Promise<T> {
+        return retry(count, delayMs, () => this.get<T>(accessToken, url))
+            .catch(e => { console.log(logger`GET retries failed`, e); throw e; })
+    }
+
+    async patch<T>(accessToken: string, url: string, body: T) {
+        return new Promise<T>(async (resolve, reject) => {
             let options = {
                 method: 'patch',
                 headers: {
@@ -55,10 +60,15 @@ export class OfficeGraph {
             let response = await fetch(url, options);
             if (response.status == 200 || response.status == 204) {
                 let json = await response.json();
-                return resolve(json);
+                return resolve(<T>json);
             }
             return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
         });
+    }
+
+    async patchWithRetry<T>(accessToken: string, url: string, body: T, count = 5, delayMs = 1000): Promise<T> {
+        return retry(count, delayMs, () => this.patch<T>(accessToken, url, body))
+            .catch(e => { console.log(logger`PATCH retries failed`, e); throw e })
     }
 
     async post(accessToken: string, url: string, body: any): Promise<any> {
@@ -82,8 +92,6 @@ export class OfficeGraph {
         });
     }
 
-
-
     async setConversations(oid: string, conversations: Partial<ConversationReference>[]) {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);  //! BUG should remove authManager dependency
         try {
@@ -97,29 +105,22 @@ export class OfficeGraph {
         try {
             let data = { extensionName: "net.shew.nagger", id: "net.shew.nagger", conversations };
             let location = await this.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
-        } catch(err) {
+        } catch (err) {
             throw new Error(`setConversation failed with error ${err} and token ${accessToken.substring(0, 5)}`);
         }
     }
 
-    async getConversations(oid: string) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);
-        let data = <any>await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger').catch((reason)=>Promise.resolve(null));
-        let conversations : any[] = data && data.conversations || [];
-        return <Partial<ConversationReference>[]>conversations;
+    async getConversations(accessToken: string) {
+        return this.getWithRetry<{ conversations?: Partial<ConversationReference>[] }>(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+            .then(data => data && data.conversations || [])
+            .catch(e => { console.log(logger`unable to get conversations`); throw e });
+
     }
 
     async findTasks(token: string): Promise<OutlookTask[]> {
-        return new Promise<OutlookTask[]>(async (resolve, reject) => {
-            try {
-                let tasks = await this.get<{ value: [OutlookTask] }>(token,
-                    `${this.graphUrlBeta}/me/outlook/tasks?${this.filterNotCompletedAndNagMeCategory}&${this.queryExpandNagExtensions}&`);
-                return resolve(tasks.value || []);
-            }
-            catch (err) {
-                return reject(err);
-            }
-        });
+        return this.getWithRetry<{ value?: [OutlookTask] }>(token, `${this.graphUrlBeta}/me/outlook/tasks?${this.filterNotCompletedAndNagMeCategory}&${this.queryExpandNagExtensions}`)
+            .then(r => r.value)
+            .catch(e => { console.log(logger`error in findTasks`, e); throw e })
     }
 
     async insertTask(token: string, task: OutlookTask): Promise<OutlookTask> {
@@ -132,8 +133,10 @@ export class OfficeGraph {
 
     async updateTask(token: string, task: OutlookTask) {
         let data = { ...this.emptyNagExtensions, ...task };
-        await this.patch(token, `https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, data);
+        let result = await this.patchWithRetry(token, `https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, data)
+            .catch(e => { console.log(logger`update task failed`, e); throw e })
         console.log(logger`updated task ${task.subject}`)
+        return result;
     }
 
     async getProfile(token: string) {

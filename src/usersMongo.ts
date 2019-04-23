@@ -24,8 +24,8 @@ export class UsersMongo extends Users {
                     for (const user of users) {
                         try {
                             this.set(user.oid, user);
-                            await app.authManager.loadAuthContext(user.authTokens);
-                            let conversationsData = await app.graph.getConversations(user.oid);
+                            let context = await app.authManager.loadAuthContext(user.authTokens);
+                            let conversationsData = await app.graph.getConversations(context.accessToken);
                             app.conversationManager.load(user.oid, conversationsData);
                             let conversations = app.conversationManager.findAll(user.oid);
                             for (const converation of conversations) {

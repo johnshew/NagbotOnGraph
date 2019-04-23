@@ -127,6 +127,7 @@ export class AuthManager extends EventEmitter {
         this.userAuthKeyToTokensMap.set(context.authKey, context);
         await this.getAccessToken(context); // forces refresh if needed
         this.emit('loaded', context);
+        return context;
     }
 
     // updates access token using refresh token
