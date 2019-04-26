@@ -1,5 +1,7 @@
+
+import { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
 import { app } from './app';
-import { SingleValueLegacyExtendedProperty, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
+import { logger } from './utils';
 
 export async function notify(forceNotifications: boolean = false) {
     if (!app.users) return;
@@ -12,7 +14,8 @@ export async function notify(forceNotifications: boolean = false) {
 export async function notifyUser(oid: string, forceNotifications: boolean = false) {
     try {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);
-        console.log(`User: ${oid}`);
+        let user = app.users.get(oid);
+        console.log(logger`checking notifications for ${user.email} (${oid})`);
         let tasks = await app.graph.findTasks(accessToken);
         for await (const task of tasks) {
             let policy = evaluateNotificationPolicy(task);
@@ -21,12 +24,13 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
         }
     }
     catch (err) {
-        console.log(`notify failed (${err})`);
+        let context = app.authManager.getAuthContextFromOid(oid);
+        console.log(logger`notify failed at ${new Date(Date.now()).toString()} and token expires ${ context.expiresOn.toString() }`,err);
     }
 }
 
 async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvaluationResult) {
-    console.log(`Task ${task.subject} is in policy with last nag date of ${ policy.lastNag.toString() }`);
+    console.log(logger`task "${task.subject}" is ready with last nag date of ${ policy.lastNag.toString() }`);
     let conversations = app.conversationManager.findAll(oid);
     for await (const conversation of conversations) {
         await app.botService.processActivityInConversation(conversation, async turnContext => {
@@ -35,14 +39,14 @@ async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvalu
                 let editUrl = app.appHttpServer.taskEditUrl(task.id);
                 let now = new Date(Date.now());
 
-                console.log(`Sending notificaton to ${conversation.conversation.id}`)
-                await turnContext.sendActivity(`Reminder for"${task.subject}". It is ${dueMessage}. [link](${editUrl})`);
+                console.log(logger`sending notificaton to ${conversation.channelId} (${conversation.conversation.id.substring(0,20)}...`)
+                await turnContext.sendActivity(`Reminder for "${task.subject}".\nIt is ${dueMessage}. [link](${editUrl})`);
 
                 updateNagLast(task, now);
                 let accessToken = await app.authManager.getAccessTokenFromOid(oid);
                 await app.graph.updateTask(accessToken, task);
             } catch (err) {
-                console.log(`notify/processActivityInConversation failed (${err})`);
+                console.log(logger`notify/processActivityInConversation failed.`,err);
             }
         });
     }
@@ -81,6 +85,6 @@ function evaluateNotificationPolicy(task: OutlookTask): NagPolicyEvaluationResul
 function updateNagLast(task: OutlookTask, time: Date) {
     if (!task.singleValueExtendedProperties) { task.singleValueExtendedProperties = []; }
     let lastNagProperty = task.singleValueExtendedProperties.find((i) => i.id.split(' ')[3] == "NagLast");
-    if (!lastNagProperty) task.singleValueExtendedProperties.push(lastNagProperty = { id: app.graph.PropertyNagLast });
+    if (!lastNagProperty) task.singleValueExtendedProperties.push(lastNagProperty = { id: app.graph.propertyNagLast });
     lastNagProperty.value = time.toISOString();
 }

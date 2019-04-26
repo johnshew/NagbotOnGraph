@@ -1,13 +1,13 @@
  # MVP
 * Host in the cloud - kubernetes with mongo?
-* Create reminder in bot
+* 
 
 # Consider
 * For the URL - consider having a TTL buffer and use shorter URLs.   Make it easier for sms channel.  
 * Do we want an SMS channel - probably better to nag directly using MMS.
 
 # MVP completed
-
+* Create reminder in bot
 * Do we want to put the conversations into Monngo - see ConversationManager2 in conversations.ts? Decision is not for now.
 * Do work in branch and PR into main.
 * Add a test suite - jest
@@ -22,7 +22,6 @@
 * The user mark can mark the task as complete.  This should immediately save and you can also click again to mark it not complete 
 
 # Work Items
-
 * P1 - Send a Nag with a url to nagbot.shew.net/task/taskid where id is the Outlook Task id and show UX on that task.
 * P2 - Mark complete.
 * P2 - Host in the cloud.
@@ -35,7 +34,6 @@
 * P3 - Basic task edit.
 
 # Work items recently completed
-
 * P0 - for a given user, store their channels in an open extension. (done)
 * P0 - Load persisted conversations at start (done)
 * P1 - For "nag marked" incomplete tasks send notifications to associated bot channels according to policy with a simple policy and last nag time.  (done)
@@ -46,7 +44,8 @@
 * P3 - Have a way show all tasks to mark requests as Naggable - for now use Category. (done)
 
 # Key commands
-* ssh  -o ServerAliveInterval=60 -R nagbotapi:80:localhost:3978 -R nagbot:80:localhost:8080 serveo.net
+* ssh -o ServerAliveInterval=60 -R nagbotapi.shew.net:80:localhost:3978 -R nagbotdev.shew.net:80:localhost:8080 serveo.net
+  * Will need ssh key
 * docker build -t nagbot .
 * docker run -p 8080:8080 -p 3978:3978 nagbot
 

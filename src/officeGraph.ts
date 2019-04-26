@@ -1,11 +1,29 @@
 import { default as fetch } from 'node-fetch';
 import { ConversationReference } from 'botbuilder';
 
-import { app } from './app';
-import { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
-export { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
+import { app } from './app';  //! BUG Should not include this
+import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+import { logger } from './utils';
 
 export class OfficeGraph {
+
+    readonly graphUrl = "https://graph.microsoft.com/v1.0";
+    readonly graphUrlBeta = "https://graph.microsoft.com/beta"
+    readonly filterNotCompletedAndNagMeCategory = "$filter=(status ne 'completed') and (categories/any(a:a eq 'NagMe'))";
+    readonly filterNagMeCategory = "$filter=(categories/any(a:a eq 'NagMe'))";
+    readonly propertyNagLast = 'String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast';
+    readonly propertyNagPreferences = 'String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences';  //!!! for now just a policy string.
+    readonly queryExpandNagExtensions = `$expand=singleValueExtendedProperties($filter=id eq '${this.propertyNagLast}' or id eq '${this.propertyNagPreferences}')`;
+    readonly emptyNagExtensions: OutlookTask = {
+        singleValueExtendedProperties: [{
+            id: "String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences",
+            value: ''
+        }, {
+            id: "String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast",
+            value: ''
+        }]
+    };
 
     async get<T>(accessToken: string, url: string): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
@@ -64,34 +82,21 @@ export class OfficeGraph {
         });
     }
 
-    readonly FilterNotCompletedAndNagMeCategory = "$filter=(status ne 'completed') and (categories/any(a:a eq 'NagMe'))";
-    readonly FilterNagMeCategory = "$filter=(categories/any(a:a eq 'NagMe'))";
-    readonly PropertyNagLast = 'String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast';
-    readonly PropertyNagPreferences = 'String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences';  //!!! for now just a policy string.
-    readonly ExpandNagExtensions = `$expand=singleValueExtendedProperties($filter=id eq '${this.PropertyNagLast}' or id eq '${this.PropertyNagPreferences}')`;
-    readonly NagExtensions: OutlookTask = {
-        singleValueExtendedProperties: [{
-            id: "String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences",
-            value: ''
-        }, {
-            id: "String {d0ac6527-76d0-4eac-af0b-b0155e8ad503} Name NagLast",
-            value: ''
-        }]
-    };
+
 
     async setConversations(oid: string, conversations: Partial<ConversationReference>[]) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);
+        let accessToken = await app.authManager.getAccessTokenFromOid(oid);  //! BUG should remove authManager dependency
         try {
             let data = { id: 'net.shew.nagger', conversations };
-            await app.graph.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', data);
+            await this.patch(accessToken, `${this.graphUrl}/me/extensions/net.shew.nagger`, data);
             return;
         }
         catch (err) {
-            console.log(`patch on user extension failed ${err} so trying post`);
+            console.log(logger`patch on user extension failed ${err} so trying post`);
         }
         try {
             let data = { extensionName: "net.shew.nagger", id: "net.shew.nagger", conversations };
-            let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
+            let location = await this.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
         } catch(err) {
             throw new Error(`setConversation failed with error ${err} and token ${accessToken.substring(0, 5)}`);
         }
@@ -99,7 +104,7 @@ export class OfficeGraph {
 
     async getConversations(oid: string) {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);
-        let data = <any>await app.graph.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger').catch((reason)=>Promise.resolve(null));
+        let data = <any>await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger').catch((reason)=>Promise.resolve(null));
         let conversations : any[] = data && data.conversations || [];
         return <Partial<ConversationReference>[]>conversations;
     }
@@ -107,8 +112,8 @@ export class OfficeGraph {
     async findTasks(token: string): Promise<OutlookTask[]> {
         return new Promise<OutlookTask[]>(async (resolve, reject) => {
             try {
-                let tasks = await app.graph.get<{ value: [OutlookTask] }>(token,
-                    `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.ExpandNagExtensions}&`);
+                let tasks = await this.get<{ value: [OutlookTask] }>(token,
+                    `${this.graphUrlBeta}/me/outlook/tasks?${this.filterNotCompletedAndNagMeCategory}&${this.queryExpandNagExtensions}&`);
                 return resolve(tasks.value || []);
             }
             catch (err) {
@@ -118,7 +123,7 @@ export class OfficeGraph {
     }
 
     async insertTask(token: string, task: OutlookTask): Promise<OutlookTask> {
-        let data = { ...task, ...this.NagExtensions };
+        let data = { ...task, ...this.emptyNagExtensions };
         if (!data.categories) data.categories = [];
         if (!data.categories.find((value) => (value == "NagMe"))) data.categories.push("NagMe");
         let result = await this.post(token, `https://graph.microsoft.com/beta/me/outlook/tasks`, data);
@@ -126,8 +131,13 @@ export class OfficeGraph {
     }
 
     async updateTask(token: string, task: OutlookTask) {
-        let data = { ...this.NagExtensions, ...task };
+        let data = { ...this.emptyNagExtensions, ...task };
         await this.patch(token, `https://graph.microsoft.com/beta/me/outlook/tasks/${task.id}`, data);
-        console.log(`Updated task ${task.subject}`)
+        console.log(logger`updated task ${task.subject}`)
+    }
+
+    async getProfile(token: string) {
+        let user = await this.get<User>(token, `${this.graphUrl}/me`);
+        return user;
     }
 }

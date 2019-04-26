@@ -1,8 +1,10 @@
+
 import { randomBytes } from 'crypto';
 import { EventEmitter } from 'events';
 import { default as fetch } from 'node-fetch';
 import { isDeepStrictEqual } from 'util';
 
+import { logger } from './utils';
 
 export class AuthContext {
     authKey: string;  // random secret to share with the client.
@@ -72,7 +74,7 @@ export class AuthManager extends EventEmitter {
                     },
                     body: body
                 });
-                if (res.status !== 200) { return reject('get token failed.'); }
+                if (res.status !== 200) { return reject(`get newContextFromCode failed.`); }
                 var data = await res.json();
                 if (data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
@@ -83,7 +85,10 @@ export class AuthManager extends EventEmitter {
                 await this.setAuthContext(tokens);
                 return resolve(tokens);
             }
-            catch (err) { return reject(err); }
+            catch (err) {
+                console.log(logger`error in getContextFromCode`, err);
+                return reject(err);
+            }
         });
     }
 
@@ -141,7 +146,9 @@ export class AuthManager extends EventEmitter {
                     },
                     body: body
                 });
-                if (res.status !== 200) { return reject('get token failed.'); }
+                if (res.status !== 200) {
+                    return reject(`refresh token for failed with ${res.status} ${res.statusText} for user ${context.oid}`);
+                }
                 var data = await res.json();
                 if (!data['expires_on'] && data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
@@ -149,11 +156,14 @@ export class AuthManager extends EventEmitter {
                 } else { throw new Error('no expiration data'); }
                 data['auth_secret'] = context.authKey;
                 let update = new AuthContext().loadFromToken(data);
-                console.log(`token ${update.accessToken.substring(0, 5)} expires ${update.expiresOn.toTimeString()} ${data.expires_in && 'in ' + data.expires_in}`);
+                console.log(logger`refreshed token ${update.accessToken.substring(0, 20)} now expires ${update.expiresOn.toString()} in ${data.expires_in} seconds`);
                 await this.setAuthContext(update);
                 return resolve();
             }
-            catch (err) { return reject(err); }
+            catch (err) {
+                console.log(logger`error refreshing tokens`, err);
+                return reject(err);
+            }
         });
     }
 
@@ -179,8 +189,11 @@ export declare interface AuthManager {
     emit(event: 'loaded', authContext: AuthContext): boolean
 }
 
-class JWT {
-    oid?: string
+interface JWT {
+    oid?: string;
+    preferred_username?: string;
+    email?: string;
+    name?: string;
 }
 
 function parseJwt(token: string): JWT {

@@ -2,10 +2,12 @@
 import * as restify from 'restify';
 import * as http from 'http';
 
-import { app } from './app';
+import { app, AppConfig } from './app';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
 import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types-beta';
 import { notifyUser } from './notifications';
+import { User } from './users';
+import { logger } from './utils';
 
 export class Server {
     server: restify.Server;
@@ -28,8 +30,8 @@ export class Server {
         });
     }
 
-    taskEditUrl(taskId: string) { return `http://nagbot.serveo.net/task/${encodeURIComponent(taskId)}`; }
-    taskCompleteUrl(taskId: string) { return `http://nagbot.serveo.net/task/${encodeURIComponent(taskId)}/complete`; }
+    taskEditUrl(taskId: string) { return `${AppConfig.publicServer.href}/task/${encodeURIComponent(taskId)}`; }
+    taskCompleteUrl(taskId: string) { return `${AppConfig.publicServer.href}/task/${encodeURIComponent(taskId)}/complete`; }
 }
 
 function configureServer(httpServer: restify.Server) {
@@ -69,20 +71,24 @@ function configureServer(httpServer: restify.Server) {
             var code = req.query['code'];
             if (code) {
                 let authContext = await app.authManager.newContextFromCode(code);
-                await app.users.set(authContext.oid, { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext });
+                let profile = await app.graph.getProfile(await app.authManager.getAccessToken(authContext));
+                let user : User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
+                if (profile.preferredName) user.preferredName = profile.preferredName;
+                if (profile.mail) user.email = profile.mail;
+                await app.users.set(authContext.oid, user);
                 res.header('Set-Cookie', 'userId=' + authContext.authKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
                 let stateString: string = req.query.state;
                 let state: any = {}
                 try { state = JSON.parse(stateString); } catch (e) { }
                 if (!state.url) state.url = '/';
-                if (state.key) {
+                if (state.key) { 
                     // should send verification code to user via web and wait for it on the bot.
                     // ignore for now.
                     let conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, authContext.oid);
                     await app.botService.processActivityInConversation(conversation, async (turnContext) => {
                         return await turnContext.sendActivity('Connected.');
                     });
-                }
+                } // else no state.key so it is a plain web login
                 res.redirect(state.url, next);
                 res.end();
                 return;
@@ -127,10 +133,9 @@ function configureServer(httpServer: restify.Server) {
 
             await app.graph.patch(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}`, body)
                 .catch(err => { throw Error(`Notify/patch failed (${err})`) });
-            let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.ExpandNagExtensions}`);
+            let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.queryExpandNagExtensions}`);
             res.setHeader('Content-Type', 'text/html');
-            let text = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-            res.end(htmlPageFromList('task', text, [], ""));
+            res.end(htmlPageFromObject('task', '', data, '<br/><a href="/">Continue</a>'));
             return next();
         } catch (err) {
             console.log(`/complete-task failed. (${err})`);
@@ -144,16 +149,16 @@ function configureServer(httpServer: restify.Server) {
         try {
             let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
             if (!authContext || !authContext.oid) {
-                console.log('not legged in');
+                console.log('not logged in');
                 res.setHeader('Content-Type', 'text/html');
                 res.end(htmlPageMessage('Task', 'Not logged in.', '<br/><a href="/">Continue</a>'));
                 return next();
             }
             let taskId = req.params['taskId'];
             let accessToken = await app.authManager.getAccessTokenFromAuthKey(authContext.authKey);
-            let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.ExpandNagExtensions}`);
+            let data = await app.graph.get(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks/${taskId}?${app.graph.queryExpandNagExtensions}`);
             res.setHeader('Content-Type', 'text/html');
-            res.end(htmlPageFromObject('task', '', JSON.stringify(data, null, 2), '<br/><a href="/">Continue</a>'));
+            res.end(htmlPageFromObject('task', '', data, '<br/><a href="/">Continue</a>'));
             return next();
         } catch (err) {
             console.log(`GET /task failed. (${err}()`);
@@ -166,19 +171,19 @@ function configureServer(httpServer: restify.Server) {
     // APIs - no html - just json response
 
     httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.ExpandNagExtensions}`);
+        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.filterNotCompletedAndNagMeCategory}&${app.graph.queryExpandNagExtensions}`);
         // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
     })
 
     httpServer.get('/api/v1.0/tasks/:id', async (req, res, next) => {
         let id = req.params["id"];
-        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.ExpandNagExtensions}`);
+        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`);
     })
 
     httpServer.patch('/api/v1.0/tasks/:id', async (req, res, next) => {
         let id = req.params["id"];
         let data = req.body;
-        await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.ExpandNagExtensions}`, data);
+        await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
     })
 
     httpServer.get('/api/v1.0/me', async (req, res, next) => {
@@ -259,12 +264,12 @@ function configureServer(httpServer: restify.Server) {
 
     httpServer.get('/test-patch', async (req, res, next) => {
         let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
-        let tasks = await app.graph.get<{ value: OutlookTask[] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.FilterNotCompletedAndNagMeCategory}&${app.graph.ExpandNagExtensions}`);
+        let tasks = await app.graph.get<{ value: OutlookTask[] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.filterNotCompletedAndNagMeCategory}&${app.graph.queryExpandNagExtensions}`);
         if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
             let task = tasks.value[0];
             let id = task.id;
             let data = JSON.parse("{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }");
-            await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.ExpandNagExtensions}`, data);
+            await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
         }
     });
 }
@@ -320,7 +325,7 @@ function getCookie(req: restify.Request, key: string): string {
 
     rc && rc.split(';').forEach(cookie => {
         var parts = cookie.split('=');
-        var name = parts.shift();
+        var name = parts.shift().trim();
         if (name) list[name] = decodeURI(parts.join('='));
     })
 

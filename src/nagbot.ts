@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { randomBytes } from 'crypto';
 import { app, AppConfig } from './app';
 import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints } from 'botbuilder';
 import { ConversationManager } from './conversations';
 import { User } from './users';
 import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
 import { OutlookTask } from './officeGraph';
+import { generateSecretKey } from './simpleAuth';
+
+// import { BaseDateTimeExtractor } from '@microsoft/recognizers-text-date-time'
 
 
 type LuisIntents = "None"
@@ -84,7 +86,7 @@ export class NagBot {
 
     async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
-        console.log(`onTurn: ${JSON.stringify(turnContext, null, 2)}`);
+        console.log(`onTurn started`);
         const activity = turnContext.activity;
         let user = await this.userAccessor.get(turnContext, {});
         let conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
@@ -97,7 +99,7 @@ export class NagBot {
                         // Check to ensure channel supports it
                         let message = MessageFactory.text('Office 365 Login', undefined, InputHints.ExpectingInput);
                         let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
-                        message.attachments = [ oauthCardAttachment];
+                        message.attachments = [oauthCardAttachment];
                         console.log(`Attachment: ${JSON.stringify(oauthCardAttachment, null, 2)}`);
                         await turnContext.sendActivity(message);
                         return;
@@ -150,16 +152,18 @@ export class NagBot {
                 break;
 
             default:
-                await turnContext.sendActivity(`[${turnContext.activity.type}]-type activity detected.`);
+                await turnContext.sendActivity(`[${turnContext.activity.type}]-type activity detected. ${JSON.stringify(turnContext, null, 2)}`);
                 break;
         }
     }
 
     async onTurnLuis(turnContext: TurnContext) {
+        let user: User = undefined;
         try {
             let results = await this.model.recognize(turnContext);
+            user = await this.userAccessor.get(turnContext, {});
             const topIntent = <LuisIntents>LuisRecognizer.topIntent(results);
-            let user = await this.userAccessor.get(turnContext, {});
+
             switch (topIntent) {
                 case 'Channels_Clear':
                     if (user && user.oid) {
@@ -172,12 +176,14 @@ export class NagBot {
                 case 'Reminder_Create':
                     if (user && user.oid) {
                         const text = results.entities["Reminder_Text"];
-                        const due = results.entities["datetime"];
-                        if (text) {
-                            let task: OutlookTask = { subject: "test" };
+                        const dueEntity = results.entities["datetime"];
+                        let dueDateTime = ProcessDateTimeEntity(dueEntity);
+                        if (text && dueDateTime) {
+                            let task: OutlookTask = { subject: text, dueDateTime: { timeZone: "PST", dateTime: dueDateTime.toISOString() } };
                             let accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
                             let savedTask = await app.graph.insertTask(accessToken, task);
-                            if (savedTask && savedTask.id) await turnContext.sendActivity(`Created new task (${text}) with id: ${savedTask.id}`);
+                            if (savedTask && savedTask.id && savedTask.dueDateTime) await turnContext.sendActivity(`Created new task ${savedTask.subject}
+    due ${new Date(savedTask.dueDateTime.dateTime).toString()}`);
                         } else {
                             await turnContext.sendActivity('Unable to create reminder - missing subject');
                         }
@@ -207,7 +213,8 @@ export class NagBot {
             }
 
         } catch (err) {
-            console.log('Error in onTurnLuis', err);
+            console.log(`Error in onTurnLuis at ${new Date(Date.now()).toString()} ${err}`);
+            console.log(`User ${user && user.email} has token that expires ${user.authTokens.expiresOn.toString()}`);
         }
     }
 
@@ -221,16 +228,38 @@ export class NagBot {
     }
 }
 
-function generateSecretKey(length: number = 16): string {
-    let buf = randomBytes(length);
-    return buf.toString('hex');
-}
-
-function guid() { return generateSecretKey(32); }
-
 const helpMessage = `I am NagBot.
 
 You can ask me to do any of the following:
 * Clear channels
 * Create a reminder; e.g. remind me to walk the dog tomorrow noon
 * List reminders: what are my reminders?`;
+
+function ProcessDateTimeEntity(dateEntity: { type: string, timex: string[] }[]) {
+    // "https://github.com/Microsoft/Recognizers-Text/blob/master/JavaScript/packages/recognizers-date-time/src/dateTime/constants.ts"
+    // "https://github.com/Microsoft/Recognizers-Text/blob/master/JavaScript/samples/botbuilder/index.js"
+
+    if (dateEntity.length < 1 && dateEntity[0].type && dateEntity[0].timex.length < 1) return undefined;
+
+    var first = dateEntity[0];
+    var type = first.type
+    var firstTimex = first.timex[0];
+
+    let date, time;
+    if (firstTimex.includes('T')) {
+        [date, time] = firstTimex.split('T');
+    } else if (firstTimex.includes('-')) {
+        date = firstTimex;
+    } else {
+        time = firstTimex;
+    }
+    if (!time) time = "00:00";
+    if (!date || !date.includes('-')) date = new Date(Date.now()).toISOString().split('T')[0];
+    let [hours, mins] = time.split(':');
+    if (!mins) time += ":00";
+    let dateTime = date + 'T' + time;
+    let result = new Date(date + 'T' + time);
+    console.log(`found DateTime ${dateTime} as ${result.toString()}`);
+    return result;
+}
+
