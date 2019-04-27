@@ -17,7 +17,7 @@ spec:
         image: johnshew/nagbot
         env:
         - name: appId
-          valueFrom: 
+          valueFrom:
             secretKeyRef:
               name: envfile
               key: appId
@@ -25,27 +25,28 @@ spec:
           valueFrom: 
             secretKeyRef:
               name: envfile
-              key: appPassword        
+              key: appPassword
         - name: mongoConnection
           valueFrom: 
             secretKeyRef:
               name: envfile
-              key: mongoConnection        
+              key: mongoConnection
         - name: luisId
           valueFrom: 
             secretKeyRef:
               name: envfile
-              key: luisId           
+              key: luisId
         - name: luisKey
           valueFrom: 
             secretKeyRef:
               name: envfile
-              key: luisKey   
-      ports:
-      - containerPort: 8080
-        name: restport
-      - containerPort: 3978
-        name: botport
+              key: luisKey
+        ports:
+        - containerPort: 8080
+          name: restport
+        - containerPort: 3978
+          name: botport
+    
 ---
 apiVersion: v1
 kind: Service
