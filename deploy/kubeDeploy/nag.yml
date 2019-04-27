@@ -16,31 +16,31 @@ spec:
       - name: nagbot
         image: johnshew/nagbot
         env:
-      - name: appId
-        valueFrom: 
-          secretKeyRef:
-            name: envfile
-            key: appId
-      - name: appPassword
-        valueFrom: 
-          secretKeyRef:
-            name: envfile
-            key: appPassword        
-      - name: mongoConnection
-        valueFrom: 
-          secretKeyRef:
-            name: envfile
-            key: mongoConnection        
-      - name: luisId
-        valueFrom: 
-          secretKeyRef:
-            name: envfile
-            key: luisId           
-      - name: luisKey
-        valueFrom: 
-          secretKeyRef:
-            name: envfile
-            key: luisKey   
+        - name: appId
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: appId
+        - name: appPassword
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: appPassword        
+        - name: mongoConnection
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: mongoConnection        
+        - name: luisId
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: luisId           
+        - name: luisKey
+          valueFrom: 
+            secretKeyRef:
+              name: envfile
+              key: luisKey   
       ports:
       - containerPort: 8080
         name: restport
