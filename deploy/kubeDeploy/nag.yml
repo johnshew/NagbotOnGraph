@@ -55,12 +55,16 @@ metadata:
   labels:
     app: nagbot
 spec:
+  selector:
+    app: nagbot
   ports:
   - name: nagbot-http
     protocol: TCP
     port: 80
-    targetPort: 8080
+    targetPort: restport
   - name: nagbot-botport
     protocol: TCP
     port: 3978
-    targetPort: 3978
+    targetPort: nagbot-botport
+  type:  LoadBalancer
+  
