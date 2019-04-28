@@ -56,11 +56,11 @@ metadata:
     app: nagbot
 spec:
   ports:
-  - name: restport
+  - name: nagbot-http
     protocol: TCP
-    port: 8080
+    port: 80
     targetPort: 8080
-  - name: botport
+  - name: nagbot-botport
     protocol: TCP
     port: 3978
     targetPort: 3978
