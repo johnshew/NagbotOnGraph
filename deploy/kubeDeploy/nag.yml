@@ -60,7 +60,7 @@ spec:
   ports:
   - name: nagbot-http
     protocol: TCP
-    port: 88
+    port: 80
     targetPort: restport
   - name: nagbot-botport
     protocol: TCP
