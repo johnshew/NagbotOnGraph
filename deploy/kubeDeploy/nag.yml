@@ -60,11 +60,11 @@ spec:
   ports:
   - name: nagbot-http
     protocol: TCP
-    port: 80
+    port: 8008
     targetPort: restport
   - name: nagbot-botport
     protocol: TCP
     port: 3978
     targetPort: nagbot-botport
   type:  LoadBalancer
-  
+
