@@ -65,6 +65,6 @@ spec:
   - name: nagbot-botport
     protocol: TCP
     port: 3978
-    targetPort: nagbot-botport
+    targetPort: botport
   type:  LoadBalancer
 
