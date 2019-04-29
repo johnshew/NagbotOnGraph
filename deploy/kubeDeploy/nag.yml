@@ -67,4 +67,4 @@ spec:
     port: 3978
     targetPort: botport
   type:  LoadBalancer
-
+  
