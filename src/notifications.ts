@@ -1,6 +1,6 @@
 
 import { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
-import { app } from './app';
+import { app, AppConfig } from './app';
 import { logger } from './utils';
 
 export async function notify(forceNotifications: boolean = false) {
@@ -77,7 +77,7 @@ function evaluateNotificationPolicy(task: OutlookTask): NagPolicyEvaluationResul
         default:
             // once per hour on day of nag or overdue otherwise once per day
             let dueOrOverdue = daysUntilDue < 1;
-            let notify = ((dueOrOverdue && minsSinceNag > 60) || (!dueOrOverdue && minsSinceNag > 24 * 60));
+            let notify = ((dueOrOverdue && minsSinceNag > AppConfig.dueTodayPolicyInterval) || (!dueOrOverdue && minsSinceNag > 24 * 60));
             return { notify, daysUntilDue, minsSinceNag, lastNag };
     }
 }
