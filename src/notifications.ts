@@ -24,7 +24,7 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
         }
     }
     catch (err) {
-        let context = app.authManager.getAuthContextFromOid(oid);
+        let context = await app.authManager.getAuthContextFromOid(oid);
         console.log(logger`notify failed at ${new Date(Date.now()).toString()} and token expires ${ context.expiresOn.toString() }`,err);
     }
 }

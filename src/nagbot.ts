@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { app, AppConfig } from './app';
-import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints } from 'botbuilder';
+import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints, RecognizerResult } from 'botbuilder';
 import { ConversationManager } from './conversations';
 import { User } from './users';
 import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
@@ -26,6 +26,9 @@ type LuisIntents = "None"
     | "Timezone_Adust"
     | "Timezone_Query"
     | "Utilities_Help"
+    | "Yes"
+    | "No"
+    | "Entity"
     ;
 
 class ConversationStatus {
@@ -230,7 +233,7 @@ export class NagBot {
 
 const helpMessage = `I am NagBot.
 
-You can ask me to do any of the following:
+Here a few of the things we can do
 * Clear channels
 * Create a reminder; e.g. remind me to walk the dog tomorrow noon
 * List reminders: what are my reminders?`;
