@@ -30,8 +30,8 @@ export class Server {
         });
     }
 
-    taskEditUrl(taskId: string) { return `${AppConfig.publicServer.href}/task/${encodeURIComponent(taskId)}`; }
-    taskCompleteUrl(taskId: string) { return `${AppConfig.publicServer.href}/task/${encodeURIComponent(taskId)}/complete`; }
+    taskEditUrl(taskId: string) { return `${AppConfig.publicServer.href}task/${taskId}`; }  // was encodeURIComponent(taskId)}`; }
+    taskCompleteUrl(taskId: string) { return `${AppConfig.publicServer.href}task/${encodeURIComponent(taskId)}/complete`; }
 }
 
 function configureServer(httpServer: restify.Server) {
@@ -46,7 +46,7 @@ function configureServer(httpServer: restify.Server) {
     httpServer.use(restify.plugins.queryParser());
 
     httpServer.use((req, res, next) => {
-        console.log(`Request for ${req.url} `);
+        console.log(logger`Request for ${req.url} `);
         next();
     });
 
@@ -60,7 +60,7 @@ function configureServer(httpServer: restify.Server) {
 
     httpServer.get('/login', (req, res, next) => {
         let authUrl = app.authManager.authUrl();
-        console.log(`redirecting to ${authUrl} `);
+        console.log(logger`redirecting to ${authUrl} `);
         res.redirect(authUrl, next);
     });
 
@@ -109,7 +109,7 @@ function configureServer(httpServer: restify.Server) {
         let conversationKey = req.query['conversationKey'] || '';
         let location = req.query['redirectUrl'];
         let authUrl = app.authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
-        console.log(`redirecting to ${authUrl}`);
+        console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });
 
