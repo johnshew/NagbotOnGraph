@@ -15,12 +15,13 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
     try {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);
         let user = app.users.get(oid);
-        console.log(logger`checking notifications for ${user.email} (${oid})`);
+        console.log(logger`checking notifications for ${user.email} (${oid.substring(0,5)}...)`);
         let tasks = await app.graph.findTasks(accessToken);
-        for await (const task of tasks) {
+        console.log(logger`found ${tasks.length} tasks`);
+        for (const task of tasks) {
             let policy = evaluateNotificationPolicy(task);
             if (!policy.notify && !forceNotifications) continue;
-            taskNotify(oid, task, policy);
+            await taskNotify(oid, task, policy);
         }
     }
     catch (err) {
@@ -40,7 +41,7 @@ async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvalu
                 let now = new Date(Date.now());
 
                 console.log(logger`sending notificaton to ${conversation.channelId} (${conversation.conversation.id.substring(0,20)}...`)
-                await turnContext.sendActivity(`Reminder for "${task.subject}".\nIt is ${dueMessage}. [link](${editUrl})`);
+                await turnContext.sendActivity(`Reminder for "${task.subject}". \r\nIt is ${dueMessage}. [link](${editUrl})`);
 
                 updateNagLast(task, now);
                 let accessToken = await app.authManager.getAccessTokenFromOid(oid);

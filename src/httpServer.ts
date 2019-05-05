@@ -53,13 +53,14 @@ function configureServer(httpServer: restify.Server) {
     //// Static pages
 
     httpServer.get('/', (req, res, next) => { res.redirect('./public/app.html', next); });
-
+    httpServer.get("/public/app,html/*", restify.plugins.serveStatic( {directory: __dirname + '/..' , file: "app.htnl"}));
     httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
     //// Authentication logic for Web 
 
     httpServer.get('/login', (req, res, next) => {
-        let authUrl = app.authManager.authUrl();
+        let url = req.getUrl();
+        let authUrl = app.authManager.authUrl({ state: url.protocol + url.host });
         console.log(logger`redirecting to ${authUrl} `);
         res.redirect(authUrl, next);
     });
@@ -108,7 +109,11 @@ function configureServer(httpServer: restify.Server) {
     httpServer.get('/bot-login', (req, res, next) => {
         let conversationKey = req.query['conversationKey'] || '';
         let location = req.query['redirectUrl'];
-        let authUrl = app.authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
+        let reqUrl = req.getUrl();
+        let authUrl = app.authManager.authUrl({
+             state: JSON.stringify({ key: conversationKey, url: location }),
+             redirect: reqUrl.host + AppConfig.authPath           
+        });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });

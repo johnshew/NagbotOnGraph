@@ -52,10 +52,11 @@ export class AuthManager extends EventEmitter {
     // Clients of the authManager interact with it using an opaque AuthKey (string) or OID (string).  
     // The AuthKey doesn't contain any PII and can be shared with a client over protected channels.
     // Clients get an AuthKey by redirecting to the AuthUrl. This will redirect back to the web server.  On the redirect back you get the code from query string and ask for the users AuthKey.
-    // Once you have an AuthKey you can get the OID.
+    // Once you have an AuthKey youoptions can get the OID.
 
-    authUrl(state: string = ''): string {
-        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${this.defaultRedirectUri}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
+    authUrl({ state, redirect} : { state?: string, redirect?: string } = { state: ''}) {
+        redirect = redirect || this.defaultRedirectUri;
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${redirect}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
     }
 
     async newContextFromCode(code: string): Promise<AuthContext> {
