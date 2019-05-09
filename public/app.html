@@ -22,9 +22,10 @@
     <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
     <script src="https://unpkg.com/vuesax/dist/vuesax.umd.js"></script> <!-- For sidebar -->
 
-    <script src='./pages/home.vue.js'></script>    
-    <script src='./pages/tasks.vue.js'></script>
-    <script src='./pages/tests.vue.js'></script>
+    <script src='/public/pages/home.vue.js'></script>
+    <script src='/public/pages/tasks.vue.js'></script>
+    <script src='/public/pages/task.vue.js'></script>
+    <script src='/public/pages/tests.vue.js'></script>
 
 </head>
 
@@ -49,23 +50,19 @@
     <script>
         Vue.use(VueRouter);
 
-        const routes = [{
-            path: '/home',
-            component: spaHome
-        },
-        {
-            path: '/tasks',
-            component: spaTasks
-        },
-        {
-            path: '/tests',
-            component: spaTests
-        }
-    ];
+        const base = '/public/app.html';
+
+        const routes = [
+            { path: '/home', component: spaHome },
+            { path: '/tasks', component: spaTasks },
+            { path: '/task/:id', component: spaTask },
+            { path: '/tests', component: spaTests }
+        ];
 
         let router = new VueRouter({
             mode: 'history',
-            routes 
+            base,
+            routes
         });
 
         router.beforeEach((to, from, next) => {
@@ -84,7 +81,11 @@
                 }
             },
             mounted() {
-                this.$router.push('/home');
+                if (window.location.pathname.indexOf('/app.html/') >= 0) {
+                    this.$router.push({ path: window.location.pathname.substring(base.length) });
+                } else {
+                    this.$router.push('home');
+                }
             },
             router
         })

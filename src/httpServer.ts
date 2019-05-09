@@ -53,7 +53,7 @@ function configureServer(httpServer: restify.Server) {
     //// Static pages
 
     httpServer.get('/', (req, res, next) => { res.redirect('./public/app.html', next); });
-    httpServer.get("/public/app,html/*", restify.plugins.serveStatic( {directory: __dirname + '/..' , file: "app.htnl"}));
+    httpServer.get("/public/app.html*", restify.plugins.serveStatic({ directory: __dirname + '/../public', file: "app.html" }));
     httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
     //// Authentication logic for Web 
@@ -73,7 +73,7 @@ function configureServer(httpServer: restify.Server) {
             if (code) {
                 let authContext = await app.authManager.newContextFromCode(code);
                 let profile = await app.graph.getProfile(await app.authManager.getAccessToken(authContext));
-                let user : User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
+                let user: User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
                 if (profile.preferredName) user.preferredName = profile.preferredName;
                 if (profile.mail) user.email = profile.mail;
                 await app.users.set(authContext.oid, user);
@@ -82,7 +82,7 @@ function configureServer(httpServer: restify.Server) {
                 let state: any = {}
                 try { state = JSON.parse(stateString); } catch (e) { }
                 if (!state.url) state.url = '/';
-                if (state.key) { 
+                if (state.key) {
                     // should send verification code to user via web and wait for it on the bot.
                     // ignore for now.
                     let conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, authContext.oid);
@@ -111,8 +111,8 @@ function configureServer(httpServer: restify.Server) {
         let location = req.query['redirectUrl'];
         let reqUrl = req.getUrl();
         let authUrl = app.authManager.authUrl({
-             state: JSON.stringify({ key: conversationKey, url: location }),
-             redirect: reqUrl.host + AppConfig.authPath           
+            state: JSON.stringify({ key: conversationKey, url: location }),
+            redirect: reqUrl.host + AppConfig.authPath
         });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
@@ -301,8 +301,14 @@ async function graphGet(req: restify.Request, res: restify.Response, next: resti
     catch (err) {
         errorMessage = 'graphForwarder error.  Detail: ' + err;
     }
-    res.setHeader('Content-Type', 'text/html');
-    res.end(htmlPageFromList('Error', errorMessage, [], '<a href="/">Continue</a>'));
+    if (composer) {
+        res.setHeader('Content-Type', 'text/html');
+        res.end(htmlPageFromList('Error', errorMessage, [], '<a href="/">Continue</a>'));
+    } else {
+        res.status(400);
+        res.json({errorMessage});
+        res.end();
+    }
     return next();
 }
 

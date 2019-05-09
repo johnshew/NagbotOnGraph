@@ -1,5 +1,6 @@
 var spaHome = Vue.component("Home", {
-    template: `<div>
+    template: /*html*/`
+<div>
     <div style="margin-bottom: 10px;"></div>
     <div v-if="id !== null">
         <b-jumbotron header="NagBot Welcomes You" :lead="displayName + ', how can I help?'">
@@ -13,8 +14,8 @@ var spaHome = Vue.component("Home", {
     props: ["title"],
     data() {
         return {
-            displayName : null,
-            id : null
+            displayName: null,
+            id: null
         };
     },
     created() {
@@ -23,21 +24,24 @@ var spaHome = Vue.component("Home", {
     methods: {
         GetUser() {
             window.fetch("/api/v1.0/me")
-            .then(response => {
-                return response.json();                
-            }).then(json => {
-                this.displayName = json.displayName;
-                this.id = json.id;
-                return json;
-            })
-            .catch(err => {
-                console.error('Error:', err);
-            });
+                .then(response => {
+                    if (response.status != 200) return null;
+                    return response.json();
+                }).then(json => {
+                    if (json) {
+                        this.displayName = json.displayName;
+                        this.id = json.id;
+                    }
+                    return
+                })
+                .catch(err => {
+                    console.error('Error', err);
+                });
 
             this.progress = true;
             this.ready = true;
 
-            this.user = { preferredName : 'Nag Tester'};
+            this.user = { preferredName: 'Nag Tester' };
         }
     }
 });

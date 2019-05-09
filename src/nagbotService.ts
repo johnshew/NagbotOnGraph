@@ -4,6 +4,7 @@ import { MicrosoftAppCredentials } from 'botframework-connector';
 
 import { NagBot } from './nagbot';
 import { ConversationManager } from './conversations';
+import { logger } from './utils';
 
 interface BotInterface {
     onTurn(turnContent: TurnContext): void;
@@ -22,8 +23,8 @@ export class NagBotService {
         try {
             this.bot = new NagBot({ store: this.storage, conversationManager: this.conversationManager });
         } catch (err) {
-            console.error(`[botInitializationError]: ${err}`);
-            process.exit();
+            console.error(logger`[botInitializationError]`,err);
+            throw new Error ('Bot Initialization error');
         }
 
         // Create bot HTTP server

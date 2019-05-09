@@ -1,8 +1,8 @@
-var spaTasks = Vue.component("Tasks", {
+var spaTask = Vue.component("Task", {
     template: /*html*/`
 <div>
     <div style="margin-bottom: 10px;"></div>
-    <div v-for="task in tasks" v-if="tasks.length>0">
+    <div v-if="task">
         <br/>
         <h3>{{ task.subject }}</h3>
         <b>{{ task.dueDateTime.dateTime.toLocaleString() }}</b> 
@@ -17,25 +17,30 @@ var spaTasks = Vue.component("Tasks", {
     props: ["title"],
     data() {
         return {
-            tasks: [],
+            task: null,
             result:  {},
             progress : false,
             ready : false
         }
     },
     created() {
-        this.GetTasks();
+        let path = window.location.pathname;
+        let prefix = '/task/';
+        let idStart = path.indexOf(prefix);
+        if (idStart <0) return;
+        idStart += prefix.length;
+        id = path.substring(idStart).trim();
+        this.GetTask(id);
     },
     methods: {
-        GetTasks() {
-            window.fetch("/api/v1.0/tasks")
-            .then(response => {
-                return response.json();                
-            }).then(json => {
-                return this.tasks = json.value;
+        GetTask(id) {
+            window.fetch(`/api/v1.0/task/${id}`)
+            .then(response => response.json())                
+            .then(json => {
+                return this.task = json.value;
             })
             .catch(err => {
-                console.error('Error:',err);
+                console.error('Error',err);
             });
 
             this.progress = true;

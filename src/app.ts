@@ -36,7 +36,7 @@ export class AppConfig {
 
 if (!(AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId)) { throw new Error('Missing app config.'); process.exit(); }
 
-class App {
+export class App {
     // This is a namespace to the set of centralized services used throughout the application.
     ready: Promise<App> = null;
     users: UsersMongo = null;
@@ -111,18 +111,8 @@ async function start() {
         await app.ready;
         console.log(logger`app started`);
     } catch (err) {
-        throw new Error(`app start failed ${err}`);
+        console.log(logger`app start failed`,err);
     }
 }
 
 start();
-
-
-/*
-import { debug  } from 'debug';
-// import { debug as Debug  } from 'debug';
-let logger = debug('app'); 
-logger.log = console.log.bind(console); // ensure output in node inspector
-console.log('');
-logger('logging started');
-*/
