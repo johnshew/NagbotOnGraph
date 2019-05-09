@@ -8,7 +8,7 @@ var spaHome = Vue.component("Home", {
         </b-jumbotron>
     </div>
     <div v-else>
-        You are not logged in. Please <a href="../login">login</a>
+        You are not logged in. Please <a href="/login">login</a>
     </div>
 </div>`,
     props: ["title"],

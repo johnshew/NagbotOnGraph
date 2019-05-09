@@ -59,8 +59,9 @@ function configureServer(httpServer: restify.Server) {
     //// Authentication logic for Web 
 
     httpServer.get('/login', (req, res, next) => {
-        let url = req.getUrl();
-        let authUrl = app.authManager.authUrl({ state: url.protocol + url.host });
+        let protocol = (req as any).encrypted ? 'https://' : 'http://';
+        let host = req.headers.host;
+        let authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
         console.log(logger`redirecting to ${authUrl} `);
         res.redirect(authUrl, next);
     });
@@ -71,7 +72,9 @@ function configureServer(httpServer: restify.Server) {
             // look for authorization code coming in (indicates redirect from interative login/consent)
             var code = req.query['code'];
             if (code) {
-                let authContext = await app.authManager.newContextFromCode(code);
+                let protocol = (req as any).encrypted ? 'https://' : 'http://';
+                let host = req.headers.host;
+                let authContext = await app.authManager.newContextFromCode(code, protocol+host+'/auth');
                 let profile = await app.graph.getProfile(await app.authManager.getAccessToken(authContext));
                 let user: User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
                 if (profile.preferredName) user.preferredName = profile.preferredName;
@@ -306,7 +309,7 @@ async function graphGet(req: restify.Request, res: restify.Response, next: resti
         res.end(htmlPageFromList('Error', errorMessage, [], '<a href="/">Continue</a>'));
     } else {
         res.status(400);
-        res.json({errorMessage});
+        res.json({ errorMessage });
         res.end();
     }
     return next();

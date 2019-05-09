@@ -54,18 +54,18 @@ export class AuthManager extends EventEmitter {
     // Clients get an AuthKey by redirecting to the AuthUrl. This will redirect back to the web server.  On the redirect back you get the code from query string and ask for the users AuthKey.
     // Once you have an AuthKey youoptions can get the OID.
 
-    authUrl({ state, redirect} : { state?: string, redirect?: string } = { state: ''}) {
+    authUrl({ state, redirect} : {  state?: string, redirect?: string } = { state: ''}) {
         redirect = redirect || this.defaultRedirectUri;
         return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${redirect}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
     }
 
-    async newContextFromCode(code: string): Promise<AuthContext> {
+    async newContextFromCode(code: string, redirect? : string): Promise<AuthContext> {
         return new Promise(async (resolve, reject) => {
             try {
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
                 body += `&code=${code}`;
-                body += `&redirect_uri=${this.defaultRedirectUri}`;
+                body += `&redirect_uri=${redirect || this.defaultRedirectUri}`;
                 body += `&grant_type=authorization_code&client_secret=${this.appPassword}`;
 
                 var res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
