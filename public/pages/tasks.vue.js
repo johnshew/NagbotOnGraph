@@ -1,19 +1,22 @@
 var spaTasks = Vue.component("Tasks", {
-    template: /*html*/
-`<v-container fluid>
+
+    template: // html
+        `<v-container fluid>
     <template v-for="(task, index) in tasks">
-        <v-layout row align-center>
-            <v-flex shrink pa-1>
-                <v-icon v-if="task.status === 'notStarted'" color="blue">check_circle_outline</v-icon>
-                <v-icon v-else color="blue">radio_button_unchecked</v-icon>
+        <v-layout row align-center pa-1 >
+            <v-flex shrink >
+                <v-icon v-if="task.status === 'notStarted'" color="blue" @click="StatusChange(task)">check_circle_outline</v-icon>
+                <v-icon v-else color="blue" @click="StatusChange(task)">radio_button_unchecked</v-icon>
             </v-flex>
             <v-flex grow pa-1 >
-                <router-link :to="{ path: '/task/'+task.id }" style="text-decoration:none" headline> {{ task.subject }}</router-link>
-                <div>{{ new Date(task.dueDateTime.dateTime).toLocaleString() }}</div>
+                <router-link :to="{ path: '/task/'+task.id }" style="text-decoration:none" headline>
+                    {{ task.subject }}
+                </router-link>
+                <div>{{ new Date(task.dueDateTime.dateTime).toDateString() }}</div>
             </v-flex>
-            <v-flex shrink pa-1 align-center>
-                <v-icon v-if="!task.categories.includes('NagMe')" color="grey lighten-1"> alarm_off </v-icon>
-                <v-icon v-else color="green darken-1"> alarm_on </v-icon>
+            <v-flex shrink align-center pa-1 >
+                <v-icon v-if="!task.categories.includes('NagMe')" color="grey lighten-1" @click="NagChange(task)"> alarm_off </v-icon>
+                <v-icon v-else color="green darken-1" @click="NagChange(task)"> alarm_on </v-icon>
             </v-flex>
         </v-layout>
         <v-layout row>
@@ -21,6 +24,7 @@ var spaTasks = Vue.component("Tasks", {
         </v-layout>
     </template>
 </v-container>`,
+
     props: ["title"],
     data() {
         return {
@@ -47,6 +51,15 @@ var spaTasks = Vue.component("Tasks", {
                 .catch(err => {
                     console.error('Error:', err);
                 });
+        },
+        StatusChange(task) {
+            task.status = (task.status === "completed") ? "notStarted" : "completed";
+            // Call API to write it.
+        },
+        NagChange(task) {
+            if (task.categories.includes('NagMe')) { task.categories = task.categories.filter(category => category !== 'NagMe') }
+            else { task.categories.splice(0, 0, 'NagMe'); }
+            // Call API to write it.
         }
     }
 });

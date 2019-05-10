@@ -1,20 +1,18 @@
 var spaTask = Vue.component("Task", {
-    template: /*html*/`
-<div>
+    template: /*html*/`<div>
     <div style="margin-bottom: 10px;"></div>
     <div v-if="task">
-        <br/>
+        <br />
         <h3>{{ task.subject }}</h3>
-        <b>{{ task.dueDateTime.dateTime.toLocaleString() }}</b> 
-        <p>{{ task.id }}</p> 
-        <br/>[
-        <template v-for="category in task.categories">
-              {{category}}                
-        </template>
-        ]
+        <p>{{ new Date(task.dueDateTime.dateTime).toDateString() }}</p>
+        <p>
+            <template v-for="category in task.categories">
+                {{category}}
+            </template>
+        </p>
     </div>
 </div>`,
-    props: ["title"],
+    props: ["id"],
     data() {
         return {
             task: null,
@@ -24,18 +22,13 @@ var spaTask = Vue.component("Task", {
         }
     },
     created() {
-        let path = window.location.pathname;
-        let prefix = '/task/';
-        let idStart = path.indexOf(prefix);
-        if (idStart < 0) return;
-        idStart += prefix.length;
-        id = path.substring(idStart).trim();
+        id = this.id || this.GetIdFromPath();
         this.GetTask(id);
     },
     methods: {
         GetTask(id) {
             window.fetch(`/api/v1.0/tasks/${id}`)
-                .then(response => { 
+                .then(response => {
                     return response.json();
                 })
                 .then(json => {
@@ -48,6 +41,15 @@ var spaTask = Vue.component("Task", {
                     console.error('Error', err);
                 });
 
+        },
+        GetIdFromPath() {
+            let path = window.location.pathname;
+            let prefix = '/task/';
+            let idStart = path.indexOf(prefix);
+            if (idStart < 0) return;
+            idStart += prefix.length;
+            id = path.substring(idStart).trim();
+            return id;
         }
     }
 });
