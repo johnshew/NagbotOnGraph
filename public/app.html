@@ -4,23 +4,20 @@
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no, minimal-ui">
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
     <title>App</title>
 
     <!-- Required Stylesheets -->
-    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
-    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
-    <link type="text/css" rel="stylesheet" href="https://unpkg.com/vuesax/dist/vuesax.css" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
 
     <!-- Required scripts -->
-    <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
-    <script src="https://unpkg.com/vue"></script>
-    <script src="https://unpkg.com/http-vue-loader"></script>
-    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
-    <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
-    <script src="https://unpkg.com/vuesax/dist/vuesax.umd.js"></script> <!-- For sidebar -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-router/dist/vue-router.js"></script>
 
     <script src='/public/pages/home.vue.js'></script>
     <script src='/public/pages/tasks.vue.js'></script>
@@ -30,25 +27,36 @@
 </head>
 
 <body>
-    <div class="container body-content">
-        <div id="app" v-cloak>
-            <router-link to="/home">
-                <b-button>Home</b-button>
-            </router-link>
-            <router-link to="/tasks">
-                <b-button>Tasks</b-button>
-            </router-link>
-            <router-link to="/tests">
-                <b-button>Tests</b-button>
-            </router-link>
-            <!-- <b-button href='./test.html'>Tests</b-button> -->
-            <router-view></router-view>
-        </div>
+    <div id="app">
+        <v-app>
+            <v-navigation-drawer app></v-navigation-drawer>
+            <v-toolbar app dense dark color="primary">
+                <v-toolbar-title>
+                    <v-icon>mdi-robot</v-icon>
+                    Nag Bot
+                </v-toolbar-title>
+                <v-spacer></v-spacer>
+                <v-toolbar-items class="hidden-sm-and-down">
+                    <v-btn to='/home' flat>home</v-btn>
+                    <v-btn to='/tasks' flat>tasks</v-btn>
+                    <v-btn to='/tests' flat>tests</v-btn>
+                </v-toolbar-items>
+
+            </v-toolbar>
+            <v-content>
+                <v-container fluid>
+                    <router-view></router-view>
+                </v-container>
+            </v-content>
+            <v-footer app></v-footer>
+        </v-app>
     </div>
 
     <!-- Start running your app -->
     <script>
         Vue.use(VueRouter);
+        Vue.use(Vuetify)
+
 
         const base = '/public/app.html';
 
@@ -73,7 +81,8 @@
             el: "#app",
             data: {
                 text: '',
-                active: false
+                active: false,
+                activeItem: 0
             },
             computed: {
                 valid() {
@@ -90,7 +99,11 @@
             router
         })
     </script>
-
+    <style>
+        html {
+            overflow-y: auto
+        }
+    </style>
 
 </body>
 

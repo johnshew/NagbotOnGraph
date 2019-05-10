@@ -1,9 +1,5 @@
 var spaTests = Vue.component("Tasks", {
-    template: `<div>
-        <p/>
-        <h2>NagBot on Microsoft Graph</h2>
-        <p><a href='./app.html'>Main App</a></p>
-        <h2>Tests</h2>
+    template: /*html*/`<div>
         <ul>
             <li><a href="/login">login</a></li>
             <li><a href="/test-tasks">tasks</a>, <a href="/api/v1.0/tasks">API tasks</a>, <a href="/test-patch">test singleValueExtendedProperties write</a></li>

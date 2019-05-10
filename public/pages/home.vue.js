@@ -1,11 +1,10 @@
 var spaHome = Vue.component("Home", {
     template: /*html*/`
 <div>
-    <div style="margin-bottom: 10px;"></div>
+    <div style="padding: 1px;"></div>
     <div v-if="id !== null">
-        <b-jumbotron header="NagBot Welcomes You" :lead="displayName + ', how can I help?'">
+        <h3>Welcome {{ displayName }}</h3>
         <p>Your id is {{ id }}</p>
-        </b-jumbotron>
     </div>
     <div v-else>
         You are not logged in. Please <a href="/login">login</a>

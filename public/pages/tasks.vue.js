@@ -1,26 +1,28 @@
 var spaTasks = Vue.component("Tasks", {
     template: /*html*/`
-<div>
-    <div style="margin-bottom: 10px;"></div>
-    <div v-for="task in tasks" v-if="tasks.length>0">
-        <br/>
-        <h3>{{ task.subject }}</h3>
-        <b>{{ task.dueDateTime.dateTime.toLocaleString() }}</b> 
-        <p>{{ task.id }}</p> 
-        <br/>[
-        <template v-for="category in task.categories">
-              {{category}}                
-        </template>
-        ]
-    </div>
-</div>`,
+    
+<v-container fluid>    
+    <template v-for="(task, index) in tasks">
+        <v-layout row>
+            <v-flex grow pa-1>
+                <router-link :to="{ path: './task/'+task.id }"> {{ task.subject }}</router-link>
+                <div>{{ new Date(task.dueDateTime.dateTime).toLocaleString() }}</div>                
+            </v-flex>
+            <v-flex shrink pa-1>
+                <v-icon v-if="task.categories.includes('NagMe')" color="grey lighten-1"> toggle_off </v-icon>
+                <v-icon v-else color="yellow darken-2"> toggle_on </v-icon>                
+            </v-flex>
+        </v-layout>
+        <v-layout row><v-divider v-if="index + 1 < tasks.length" :key="index"></v-divider></v-layout>
+    </template>    
+</v-container>`,
     props: ["title"],
     data() {
         return {
             tasks: [],
-            result:  {},
-            progress : false,
-            ready : false
+            result: {},
+            progress: false,
+            ready: false
         }
     },
     created() {
@@ -29,17 +31,17 @@ var spaTasks = Vue.component("Tasks", {
     methods: {
         GetTasks() {
             window.fetch("/api/v1.0/tasks")
-            .then(response => {
-                return response.json();                
-            }).then(json => {
-                return this.tasks = json.value;
-            })
-            .catch(err => {
-                console.error('Error:',err);
-            });
-
-            this.progress = true;
-            this.ready = true;
+                .then(response => {
+                    return response.json();
+                }).then(json => {
+                    this.tasks = json.value;
+                    this.progress = true;
+                    this.ready = true;
+                    return;
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                });
         }
     }
 });
