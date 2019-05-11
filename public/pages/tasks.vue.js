@@ -53,10 +53,11 @@ var spaTasks = Vue.component("Tasks", {
                 });
         },
         UpdateTask(task) {
+            let patch = { status: task.status, categories: task.categories };
             window.fetch(`/api/v1.0/tasks/${task.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(task),
+                body: JSON.stringify(patch),
             })
                 .then(response => {
                     return response.json();
