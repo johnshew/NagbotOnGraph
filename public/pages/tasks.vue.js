@@ -52,14 +52,28 @@ var spaTasks = Vue.component("Tasks", {
                     console.error('Error:', err);
                 });
         },
+        UpdateTask(task) {
+            window.fetch(`/api/v1.0/tasks/${task.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(task),
+            })
+                .then(response => {
+                    return response.json();
+                })
+                .then(json => {
+                    task = json;
+                })
+                .catch(err => console.error(err))
+        },
         StatusChange(task) {
             task.status = (task.status === "completed") ? "notStarted" : "completed";
-            // Call API to write it.
+            this.UpdateTask(task);
         },
-        NagChange(task) {
+        NagChange: async function (task) {
             if (task.categories.includes('NagMe')) { task.categories = task.categories.filter(category => category !== 'NagMe') }
             else { task.categories.splice(0, 0, 'NagMe'); }
-            // Call API to write it.
+            this.UpdateTask(task);
         }
     }
 });

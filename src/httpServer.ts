@@ -179,7 +179,7 @@ function configureServer(httpServer: restify.Server) {
     // APIs - no html - just json response
 
     httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.filterNotCompletedAndNagMeCategory}&${app.graph.queryExpandNagExtensions}`);
+        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.queryExpandNagExtensions}`);
         // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
     })
 
@@ -320,6 +320,8 @@ async function graphPatch(req: restify.Request, res: restify.Response, next: res
     try {
         let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
         let result = await app.graph.patch(accessToken, url, data);
+        res.json(200,result);
+        res.end();
         return next();
     }
     catch (err) {
