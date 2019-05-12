@@ -19,8 +19,8 @@ export class AppConfig {
     static readonly luisId = process.env.luisId;
     static readonly luisKey = process.env.luisKey;
     static readonly luisStaging = false;
-    static readonly notificationCheckFrequency = 1 /* minutes */ * 60 * 1000;
-    static readonly dueTodayPolicyInterval = 2; /* minutes */
+    static readonly notificationCheckFrequency = 10 /* minutes */ * 60 * 1000;
+    static readonly dueTodayPolicyInterval = 60; /* minutes */
 
 
     static check() : boolean {
