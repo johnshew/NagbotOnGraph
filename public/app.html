@@ -36,7 +36,7 @@
                 <v-list>
                     <v-list-tile :to="'/home'">home</v-list-tile>
                     <v-list-tile :to="'/tasks'">tasks</v-list-tile>
-                    <v-list-tile :to="'/connections'">connections</v-list-tile>
+                    <v-list-tile to="/connections">connections</v-list-tile>
                     <v-list-tile :to="'/tests'">tests</v-list-tile>
                 </v-list>
             </v-navigation-drawer>
@@ -57,7 +57,7 @@
             </v-toolbar>
             <v-content>
                 <v-container fluid>
-                    <router-view></router-view>
+                    <router-view v-bind:user="user" v-on:update-user="UpdateUser($event)" ></router-view>
                 </v-container>
             </v-content>
             <v-footer app></v-footer>
@@ -93,21 +93,23 @@
         window.app = new Vue({
             el: "#app",
             data: {
-                text: '',
                 active: false,
-                activeItem: 0,
                 drawer: null, // See for example https://gist.github.com/oliverbth05/9834e9114b52b1f4ea77a0ae2d353e2f
+                user : null,
             },
             computed: {
-                valid() {
-                    return this.text.length > 0 ? true : false;
-                }
             },
             mounted() {
                 if (window.location.pathname.indexOf('/app.html/') >= 0) {
                     this.$router.push({ path: window.location.pathname.substring(base.length) });
                 } else {
                     this.$router.push('home');
+                }
+            },
+            methods: {
+                UpdateUser(event) {
+                    console.log('Got event', event)
+                    this.user = event;
                 }
             },
             router

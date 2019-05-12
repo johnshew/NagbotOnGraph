@@ -10,16 +10,30 @@ var spaHome = Vue.component("Home", {
         You are not logged in. Please <a href="/login">login</a>
     </div>
 </div>`,
-    props: ["title"], // "displayName","user","id"],
+    props: {
+        user: Object
+    },
     data() {
         return {
-            displayName: null,
-            user: null,
-            id: null
+            progress: false,
+            ready: false
         };
     },
     created() {
-        this.GetUser();
+        if (!this.user) {
+            this.GetUser();
+        }
+    },
+    computed: {
+        displayName: function () {
+            let result = this.user ? this.user.displayName : null;
+            return result;
+        }
+        ,
+        id: function () {
+            let result = this.user ? this.user.id : null;
+            return result;
+        }
     },
     methods: {
         GetUser() {
@@ -29,20 +43,15 @@ var spaHome = Vue.component("Home", {
                     return response.json();
                 }).then(json => {
                     if (json) {
-                        this.displayName = json.displayName;
-                        this.id = json.id;
-                        this.user = json;
+                        this.progress = true;
+                        this.ready = true;
+                        this.$emit("update-user", json);
+                        return;
                     }
-                    return
                 })
                 .catch(err => {
                     console.error('Error', err);
                 });
-
-            this.progress = true;
-            this.ready = true;
-
-            this.user = { preferredName: 'Nag Tester' };
         }
     }
 });
