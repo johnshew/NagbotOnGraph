@@ -39,15 +39,13 @@
                 </v-list>
             </v-navigation-drawer>
             <v-toolbar app dense dark color="primary">
-                <v-toolbar-side-icon @click.stop="drawer = !drawer" class="hidden-md-and-up">
+                <v-toolbar-side-icon @click.stop="drawer = !drawer" >
                     <span class="iconify" data-icon="mdi-space-invaders" data-inline="false" data-width="2em"
                         data-height="2em"></span>
                 </v-toolbar-side-icon>
-                <v-toolbar-title>
-                    Nag Bot
-                </v-toolbar-title>
+                <v-toolbar-title class="hidden-sm-and-down">Nag Bot</v-toolbar-title>
                 <v-spacer></v-spacer>
-                <v-toolbar-items class="hidden-sm-and-down">
+                <v-toolbar-items class="hidden-xs-only">
                     <v-btn to='/home' flat>home</v-btn>
                     <v-btn to='/tasks' flat>tasks</v-btn>
                     <v-btn to='/tests' flat>tests</v-btn>
@@ -94,7 +92,7 @@
                 text: '',
                 active: false,
                 activeItem: 0,
-                drawer: null
+                drawer: null, // See for example https://gist.github.com/oliverbth05/9834e9114b52b1f4ea77a0ae2d353e2f
             },
             computed: {
                 valid() {
