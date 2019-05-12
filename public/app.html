@@ -15,9 +15,11 @@
     <link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
 
     <!-- Required scripts -->
+    <script src="https://code.iconify.design/1/1.0.2/iconify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue-router/dist/vue-router.js"></script>
+
 
     <script src='/public/pages/home.vue.js'></script>
     <script src='/public/pages/tasks.vue.js'></script>
@@ -29,13 +31,23 @@
 <body>
     <div id="app">
         <v-app>
-            <v-navigation-drawer app></v-navigation-drawer>
+            <v-navigation-drawer class="blue lighten-5" v-model="drawer" temporary absolute width="200" id="drawer">
+                <v-list>
+                    <v-list-tile :to="'/home'">home</v-list-tile>
+                    <v-list-tile :to="'/tasks'">tasks</v-list-tile>
+                    <v-list-tile :to="'/tests'">tests</v-list-tile>
+                </v-list>
+            </v-navigation-drawer>
             <v-toolbar app dense dark color="primary">
-                <v-toolbar-title>                    
+                <v-toolbar-side-icon @click.stop="drawer = !drawer" class="hidden-md-and-up">
+                    <span class="iconify" data-icon="mdi-space-invaders" data-inline="false" data-width="2em"
+                        data-height="2em"></span>
+                </v-toolbar-side-icon>
+                <v-toolbar-title>
                     Nag Bot
                 </v-toolbar-title>
                 <v-spacer></v-spacer>
-                <v-toolbar-items >
+                <v-toolbar-items class="hidden-sm-and-down">
                     <v-btn to='/home' flat>home</v-btn>
                     <v-btn to='/tasks' flat>tasks</v-btn>
                     <v-btn to='/tests' flat>tests</v-btn>
@@ -81,7 +93,8 @@
             data: {
                 text: '',
                 active: false,
-                activeItem: 0
+                activeItem: 0,
+                drawer: null
             },
             computed: {
                 valid() {
