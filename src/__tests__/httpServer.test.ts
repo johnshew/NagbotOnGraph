@@ -32,8 +32,6 @@ AppMocked.mockImplementation((...args: any) => {
 
 import { Server } from '../httpServer';
 import { default as fetch } from 'node-fetch';
-import { doesNotReject } from 'assert';
-
 
 describe("Http Server", () => {
     let server: Server;

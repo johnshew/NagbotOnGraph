@@ -1,4 +1,4 @@
-var spaTask = Vue.component("Task", {
+var spaTaskDetails = Vue.component("TaskDetails", {
     template:
 /*html*/`<v-container fluid>
     <v-layout row align-top pa-1 v-if="task">
@@ -43,7 +43,7 @@ var spaTask = Vue.component("Task", {
     },
     methods: {
         GetTask(id) {
-            window.fetch(`/api/v1.0/tasks/${id}`)
+            window.fetch(`/api/v1.0/me/tasks/${id}`)
                 .then(response => {
                     return response.json();
                 })
@@ -70,7 +70,7 @@ var spaTask = Vue.component("Task", {
         },
         UpdateTask(task) {
             let patch = { status: task.status, categories: task.categories };
-            window.fetch(`/api/v1.0/tasks/${task.id}`, {
+            window.fetch(`/api/v1.0/me/tasks/${task.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(patch),

@@ -10,10 +10,11 @@ var spaHome = Vue.component("Home", {
         You are not logged in. Please <a href="/login">login</a>
     </div>
 </div>`,
-    props: ["title"],
+    props: ["title"], // "displayName","user","id"],
     data() {
         return {
             displayName: null,
+            user: null,
             id: null
         };
     },
@@ -30,6 +31,7 @@ var spaHome = Vue.component("Home", {
                     if (json) {
                         this.displayName = json.displayName;
                         this.id = json.id;
+                        this.user = json;
                     }
                     return
                 })

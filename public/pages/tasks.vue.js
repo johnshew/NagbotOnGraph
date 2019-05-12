@@ -39,7 +39,7 @@ var spaTasks = Vue.component("Tasks", {
     },
     methods: {
         GetTasks() {
-            window.fetch("/api/v1.0/tasks")
+            window.fetch("/api/v1.0/me/tasks")
                 .then(response => {
                     return response.json();
                 }).then(json => {

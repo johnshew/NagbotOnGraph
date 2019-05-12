@@ -22,8 +22,9 @@
 
 
     <script src='/public/pages/home.vue.js'></script>
+    <script src='/public/pages/connections.vue.js'></script>
     <script src='/public/pages/tasks.vue.js'></script>
-    <script src='/public/pages/task.vue.js'></script>
+    <script src='/public/pages/taskDetails.vue.js'></script>
     <script src='/public/pages/tests.vue.js'></script>
 
 </head>
@@ -35,6 +36,7 @@
                 <v-list>
                     <v-list-tile :to="'/home'">home</v-list-tile>
                     <v-list-tile :to="'/tasks'">tasks</v-list-tile>
+                    <v-list-tile :to="'/connections'">connections</v-list-tile>
                     <v-list-tile :to="'/tests'">tests</v-list-tile>
                 </v-list>
             </v-navigation-drawer>
@@ -48,6 +50,7 @@
                 <v-toolbar-items class="hidden-xs-only">
                     <v-btn to='/home' flat>home</v-btn>
                     <v-btn to='/tasks' flat>tasks</v-btn>
+                    <v-btn to='/connections' flat>connections</v-btn>
                     <v-btn to='/tests' flat>tests</v-btn>
                 </v-toolbar-items>
 
@@ -71,8 +74,9 @@
 
         const routes = [
             { path: '/home', component: spaHome },
+            { path: '/connections', component: spaConnections },
             { path: '/tasks', component: spaTasks },
-            { path: '/task/:id', component: spaTask },
+            { path: '/task/:id', component: spaTaskDetails },
             { path: '/tests', component: spaTests }
         ];
 
