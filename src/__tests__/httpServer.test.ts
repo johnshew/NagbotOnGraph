@@ -1,52 +1,45 @@
 
+jest.mock('../simpleAuth');
+import { AuthManager, AuthContext } from '../simpleAuth';
+const AuthManagerMocked = AuthManager as unknown as jest.Mock<AuthManager>;
+AuthManagerMocked.mockImplementation((...args: any) => {
+    return {
+        getAccessToken: jest.fn<string, any>().mockImplementation(() => { return '' }),
+        getAccessTokenFromAuthKey: jest.fn<string, any>().mockImplementation(() => { return '' }),
+        getAuthContextFromAuthKey: jest.fn<AuthContext, any>().mockImplementation(() => { return null }),
+    } as unknown as AuthManager; // since not complete
+});
+
+jest.mock('../nagbotApp');
+import { App } from '../nagbotApp';
+const AppMocked = <jest.Mock<App>>App;
+AppMocked.mockImplementation((...args: any) => {
+    let app: App;
+    return {
+        ready: Promise.resolve({} as App),
+        appHttpServer: undefined as unknown as typeof app.appHttpServer,
+        authManager: new AuthManager('x','y','z'),
+        botService: undefined as unknown as typeof app.botService,
+        conversationManager: undefined as unknown as typeof app.conversationManager,
+        users: undefined as unknown as typeof app.users,
+        graph: undefined as unknown as typeof app.graph,
+        timer: undefined as unknown as typeof app.timer,
+
+        start: jest.fn<Promise<App>, any>().mockResolvedValue(undefined as unknown as App),
+        close: jest.fn<Promise<void>, any>().mockResolvedValue()
+    };
+});
+
 import { Server } from '../httpServer';
 import { default as fetch } from 'node-fetch';
-
-import { app, App, AppConfig } from '../app';
-
-/*
-const getAccessToken = jest.fn();
-jest.mock('../simpleAuth', () => {
-    return jest.fn().mockImplementation(() => {
-        return { getAccessToken };
-    });
-});
-*/
-
-jest.mock('../app');
-
-const appMocked = App as any as jest.Mock<App>;
-appMocked.mockImplementation((...args: any) => {
-    return {
-        appHttpServer: jest.fn<typeof app.appHttpServer, any>(),
-        authManager: jest.fn<typeof app.authManager, any>(),
-        ready: jest.fn<Promise<typeof app>,any>().mockReturnThis(),
-        users: jest.fn<typeof app.users, any>(),
-        botService: jest.fn<typeof app.botService, any>(),
-        conversationManager: jest.fn<typeof app.conversationManager, any>(),
-        graph: jest.fn<typeof app.graph, any>(),
-        timer: jest.fn<typeof app.timer, any>(),
-        close: jest.fn<typeof app.close, any>()
-    } as unknown as typeof app;
-});
+import { doesNotReject } from 'assert';
 
 
 describe("Http Server", () => {
-    test('empty', async (done)=>{
-        await app.close();
-        expect(app.close).toBeCalled();
-        done();
-    });
-/*     let server;
+    let server: Server;
 
-    beforeAll(() => {
+    beforeAll(async (done) => {
         server = new Server('8080');
-    });
-
-    test('confirm mocks', async (done) => {
-        expect(app).toBeDefined();
-        expect(AppConfig).toBeUndefined();
-        expect(app.authManager).toBeDefined();
         done();
     });
 
@@ -57,6 +50,13 @@ describe("Http Server", () => {
         done();
     });
 
+    afterAll(async (done) => {
+        await server.asyncClose();
+        done();
+    });
+
+    /* Need to mock office graph
+
     test('redirects to login', async (done) => {
         let response = await fetch('http://localhost:8080/task/1234');
         expect(response.status).toBe(200);
@@ -65,5 +65,6 @@ describe("Http Server", () => {
         expect(text).toContain('Are you logged in');
         done()
     });
-*/
+
+    */
 });

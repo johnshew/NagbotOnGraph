@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { app, AppConfig } from './app';
+import { app, AppConfig } from './nagbotApp';
 import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints, RecognizerResult } from 'botbuilder';
 import { ConversationManager } from './conversations';
 import { User } from './users';

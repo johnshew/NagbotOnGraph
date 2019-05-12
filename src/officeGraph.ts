@@ -1,7 +1,5 @@
 import { default as fetch } from 'node-fetch';
 import { ConversationReference } from 'botbuilder';
-
-import { app } from './app';  //! BUG Should not include this
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 import { logger } from './utils';
@@ -84,8 +82,7 @@ export class OfficeGraph {
 
 
 
-    async setConversations(oid: string, conversations: Partial<ConversationReference>[]) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);  //! BUG should remove authManager dependency
+    async setConversations(accessToken: string, conversations: Partial<ConversationReference>[]) {
         try {
             let data = { id: 'net.shew.nagger', conversations };
             await this.patch(accessToken, `${this.graphUrl}/me/extensions/net.shew.nagger`, data);
@@ -97,15 +94,15 @@ export class OfficeGraph {
         try {
             let data = { extensionName: "net.shew.nagger", id: "net.shew.nagger", conversations };
             let location = await this.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
-        } catch(err) {
+        } catch (err) {
             throw new Error(`setConversation failed with error ${err} and token ${accessToken.substring(0, 5)}`);
         }
     }
 
-    async getConversations(oid: string) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);
-        let data = <any>await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger').catch((reason)=>Promise.resolve(null));
-        let conversations : any[] = data && data.conversations || [];
+    async getConversations(accessToken: string) {
+        let data = await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+            .catch((reason) => Promise.resolve(null));
+        let conversations: any[] = data && data.conversations || [];
         return <Partial<ConversationReference>[]>conversations;
     }
 

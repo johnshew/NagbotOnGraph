@@ -37,3 +37,7 @@ if (false) {
     console.log(logger`log test ${{ foo: 'foo' }} ${ 10 }`);
     console.log(logger`multiple args test`, new Error('Test'));
 }
+
+export function sleep(ms : number) {
+    return new Promise<void>(resolve => setTimeout(resolve, ms));
+}

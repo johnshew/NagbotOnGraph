@@ -2,7 +2,7 @@
 import * as restify from 'restify';
 import * as http from 'http';
 
-import { app, AppConfig } from './app';
+import { app, AppConfig } from './nagbotApp';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
 import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types-beta';
 import { notifyUser } from './notifications';

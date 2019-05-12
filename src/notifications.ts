@@ -1,6 +1,6 @@
 
 import { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
-import { app, AppConfig } from './app';
+import { app, AppConfig } from './nagbotApp';
 import { logger } from './utils';
 
 export async function notify(forceNotifications: boolean = false) {

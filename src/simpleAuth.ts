@@ -43,7 +43,7 @@ export class AuthContext {
 
 export class AuthManager extends EventEmitter {
 
-    private userAuthKeyToTokensMap = new Map<string, AuthContext>(); // UserAuthKey to AuthTokens
+    userAuthKeyToTokensMap = new Map<string, AuthContext>(); // UserAuthKey to AuthTokens
 
     constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) {
         super();
@@ -128,6 +128,7 @@ export class AuthManager extends EventEmitter {
         this.userAuthKeyToTokensMap.set(context.authKey, context);
         await this.getAccessToken(context); // forces refresh if needed
         this.emit('loaded', context);
+        return context;
     }
 
     // updates access token using refresh token
