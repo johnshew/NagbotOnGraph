@@ -33,7 +33,8 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
 async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvaluationResult) {
     console.log(logger`task "${task.subject}" is ready with last nag date of ${ policy.lastNag.toString() }`);
     let conversations = app.conversationManager.findAll(oid);
-    for await (const conversation of conversations) {
+    for (const conversation of conversations) {
+        if (!conversation.nagEnabled) continue;
         await app.botService.processActivityInConversation(conversation, async turnContext => {
             try {
                 let dueMessage = (policy.daysUntilDue >= 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;

@@ -37,7 +37,7 @@ var spaHome = Vue.component("Home", {
     },
     methods: {
         GetUser() {
-            window.fetch("/api/v1.0/me")
+            window.fetch("/api/v1.0/me", {cache: "no-store"})
                 .then(response => {
                     if (response.status != 200) return null;
                     return response.json();

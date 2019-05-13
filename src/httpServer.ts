@@ -215,99 +215,125 @@ function configureServer(httpServer: restify.Server) {
         res.json({ error });
         res.end();
         return next();
-})
-
-httpServer.get('/api/v1.0/me/connections/:id', async (req, res, next) => {
-    await graphGet(req, res, next, "https://graph.microsoft.com/v1.0/me");
-})
-
-httpServer.patch('/api/v1.0/me/connections/:id', async (req, res, next) => {
-    await graphGet(req, res, next, "https://graph.microsoft.com/v1.0/me");
-})
-
-
-
-/// Interactive Tests
-
-httpServer.get('/test-mail', async (req, res, next) => {
-    await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data: { value: OutlookTask[] }) => {
-        let subjects = data.value.map(tasks => 'Subject: ' + tasks.subject);
-        return htmlPageFromList('Mail', '', subjects, '<a href="/">Continue</a>');
     })
-});
 
-httpServer.get('/test-tasks', async (req, res, next) => {
-    await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data: { value: OutlookTask[] }) => {
-        let subjects = data.value.map(task => 'Subject: ' + task.subject);
-        return htmlPageFromList('Tasks', '', subjects, '<a href="/">Continue</a>');
-    })
-});
-
-httpServer.get('/test-profile', async (req, res, next) => {
-    await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/extensions", (data: any) => {
-        return htmlPageFromObject('Profile', '', data, '<a href="/">Continue</a>');
-    })
-});
-
-httpServer.get('/test-update', async (req, res, next) => {
-    let responseCode: number | null = null;
-    let body: OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
-    try {
-        let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
-        await app.graph.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
-    }
-    catch (err) {
-        console.log(`patch on user extension failed ${err}`);
-        responseCode = err;
-    }
-
-    if (responseCode == 404) try {
-        responseCode = null;
-        let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
-        body.extensionName = 'net.shew.nagger';
-        body.id = 'net.shew.nagger'
-        let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', body);
-    } catch (err) {
-        console.log(`post on user extension failed ${err}`);
-        responseCode = err;
-    }
-
-    res.setHeader('Content-Type', 'text/html');
-    if (!responseCode) {
-        res.end(`<html><head></head><body><p>User updated</p><a href="/">Continue</a></body></html>`);
+    httpServer.patch('/api/v1.0/me/connections/:id', async (req, res, next) => {
+        let id = req.params["id"];  // this is ignored for now
+        let data = req.body;
+        let error: any;
+        try {            
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            if (!authContext || !authContext.oid) throw new Error('/me/connections-PATCH: Could not identify user');
+            app.conversationManager.upsert(authContext.oid, data);
+            res.status(200);
+            res.end();
+            return next();
+        } catch (err) { error = error }
+        res.status(400);
+        res.json({ error });
+        res.end();
         return next();
-    } else {
-        res.end('<html><head></head><body>Unable to update user information<br/><a href="/">Continue</a></body></html>');
+    })
+
+    httpServer.del('/api/v1.0/me/connections/:id', async (req, res, next) => {
+        let id = req.params["id"];  // this is ignored for now
+        let data = req.body;
+        let error: any;
+        try {            
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            if (!authContext || !authContext.oid) throw new Error('/me/connections-PATCH: Could not identify user');
+            app.conversationManager.delete(authContext.oid, data);
+            res.status(200);
+            res.end();
+            return next();
+        } catch (err) { error = error }
+        res.status(400);
+        res.json({ error });
+        res.end();
         return next();
-    }
-});
+    })
 
-httpServer.get('/test-notify', async (req, res, next) => {
-    let responseCode: number | null = null;
-    try {
-        let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
-        notifyUser(authContext.oid);
+    /// Interactive Tests
+
+    httpServer.get('/test-mail', async (req, res, next) => {
+        await graphGet(req, res, next, 'https://graph.microsoft.com/beta/me/messages', (data: { value: OutlookTask[] }) => {
+            let subjects = data.value.map(tasks => 'Subject: ' + tasks.subject);
+            return htmlPageFromList('Mail', '', subjects, '<a href="/">Continue</a>');
+        })
+    });
+
+    httpServer.get('/test-tasks', async (req, res, next) => {
+        await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/outlook/tasks?filter=(status eq 'notStarted') and (categories/any(a:a+eq+'NagMe'))", (data: { value: OutlookTask[] }) => {
+            let subjects = data.value.map(task => 'Subject: ' + task.subject);
+            return htmlPageFromList('Tasks', '', subjects, '<a href="/">Continue</a>');
+        })
+    });
+
+    httpServer.get('/test-profile', async (req, res, next) => {
+        await graphGet(req, res, next, "https://graph.microsoft.com/beta/me/extensions", (data: any) => {
+            return htmlPageFromObject('Profile', '', data, '<a href="/">Continue</a>');
+        })
+    });
+
+    httpServer.get('/test-update', async (req, res, next) => {
+        let responseCode: number | null = null;
+        let body: OpenTypeExtension & { time?: string } = { time: new Date().toISOString() };
+        try {
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
+            await app.graph.patch(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger', body)
+        }
+        catch (err) {
+            console.log(`patch on user extension failed ${err}`);
+            responseCode = err;
+        }
+
+        if (responseCode == 404) try {
+            responseCode = null;
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
+            body.extensionName = 'net.shew.nagger';
+            body.id = 'net.shew.nagger'
+            let location = await app.graph.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', body);
+        } catch (err) {
+            console.log(`post on user extension failed ${err}`);
+            responseCode = err;
+        }
+
         res.setHeader('Content-Type', 'text/html');
-        res.end(htmlPageMessage('Test Notifications', 'Done with notifications', '<br/><a href="/">Continue</a></body></html>'));
-    }
-    catch (err) {
-        console.log(`/test-notify failed ${err}`);
-        res.setHeader('Content-Type', 'text/html');
-        res.end(htmlPageMessage('Test Notifications', `Test Notifications failed.<\br>Error: ${err}`, '<br/><a href="/">Continue</a></body></html>'));
-    }
-});
+        if (!responseCode) {
+            res.end(`<html><head></head><body><p>User updated</p><a href="/">Continue</a></body></html>`);
+            return next();
+        } else {
+            res.end('<html><head></head><body>Unable to update user information<br/><a href="/">Continue</a></body></html>');
+            return next();
+        }
+    });
+
+    httpServer.get('/test-notify', async (req, res, next) => {
+        let responseCode: number | null = null;
+        try {
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            notifyUser(authContext.oid);
+            res.setHeader('Content-Type', 'text/html');
+            res.end(htmlPageMessage('Test Notifications', 'Done with notifications', '<br/><a href="/">Continue</a></body></html>'));
+        }
+        catch (err) {
+            console.log(`/test-notify failed ${err}`);
+            res.setHeader('Content-Type', 'text/html');
+            res.end(htmlPageMessage('Test Notifications', `Test Notifications failed.<\br>Error: ${err}`, '<br/><a href="/">Continue</a></body></html>'));
+        }
+    });
 
 
-httpServer.get('/test-patch', async (req, res, next) => {
-    let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
-    let tasks = await app.graph.get<{ value: OutlookTask[] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.filterNotCompletedAndNagMeCategory}&${app.graph.queryExpandNagExtensions}`);
-    if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
-        let task = tasks.value[0];
-        let id = task.id;
-        let data = JSON.parse("{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }");
-        await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
-    }
-});
+    httpServer.get('/test-patch', async (req, res, next) => {
+        let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
+        let tasks = await app.graph.get<{ value: OutlookTask[] }>(accessToken, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.filterNotCompletedAndNagMeCategory}&${app.graph.queryExpandNagExtensions}`);
+        if (tasks && tasks.value && Array.isArray(tasks.value) && tasks.value.length > 0) {
+            let task = tasks.value[0];
+            let id = task.id;
+            let data = JSON.parse("{ \"singleValueExtendedProperties\": [ { \"id\": \"String {b07fd8b0-91cb-474d-8b9d-77f435fa4f03} Name NagPreferences\", \"value\":\"{}\" } ] }");
+            await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
+        }
+    });
 }
 
 //// Automatic response generators for graph information

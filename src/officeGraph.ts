@@ -1,7 +1,7 @@
 import { default as fetch } from 'node-fetch';
-import { ConversationReference } from 'botbuilder';
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+import { Conversation } from './conversations';
 import { logger } from './utils';
 
 export class OfficeGraph {
@@ -39,8 +39,8 @@ export class OfficeGraph {
         });
     }
 
-    async patch(accessToken: string, url: string, body: any) {
-        return new Promise<void>(async (resolve, reject) => {
+    async patch(accessToken: string, url: string, body: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
             let options = {
                 method: 'patch',
                 headers: {
@@ -50,12 +50,19 @@ export class OfficeGraph {
                 },
                 body: JSON.stringify(body)
             }
-            let response = await fetch(url, options);
-            if (response.status == 200 || response.status == 204) {
-                let json = await response.json();
-                return resolve(json);
+            try {
+                let response = await fetch(url, options);
+                if (response.status == 200) {
+                    let json = await response.json();
+                    return resolve(json);
+                } else if (response.status == 204) {
+                    return resolve(null);
+                }
+                return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
+            } catch (err) {
+                console.log(logger`PATCH failed`, err);
+                return reject(err);
             }
-            return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
         });
     }
 
@@ -82,7 +89,7 @@ export class OfficeGraph {
 
 
 
-    async setConversations(accessToken: string, conversations: Partial<ConversationReference>[]) {
+    async setConversations(accessToken: string, conversations: Conversation[]) {
         try {
             let data = { id: 'net.shew.nagger', conversations };
             await this.patch(accessToken, `${this.graphUrl}/me/extensions/net.shew.nagger`, data);
@@ -103,7 +110,7 @@ export class OfficeGraph {
         let data = await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
             .catch((reason) => Promise.resolve(null));
         let conversations: any[] = data && data.conversations || [];
-        return <Partial<ConversationReference>[]>conversations;
+        return <Conversation[]>conversations;
     }
 
     async findTasks(token: string): Promise<OutlookTask[]> {

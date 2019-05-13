@@ -33,13 +33,13 @@ export class App {
                 });
                 this.graph = new OfficeGraph();
                 this.conversationManager = new ConversationManager();
-                this.conversationManager.on('updated', async (oid, conversation, conversations) => {
+                this.conversationManager.on('updated', async (oid, conversation) => {
                     if (!this.users) throw ('need users');
                     let user = this.users.get(oid);
-                    let userConversations = conversations.findAll(oid);
+                    let userConversations = this.conversationManager.findAll(oid);
                     console.log(logger`updating ${userConversations.length} conversations for ${user.preferredName}`);
                     let accessToken = await this.authManager.getAccessTokenFromOid(oid);
-                    this.graph.setConversations(accessToken, conversations.findAll(oid))
+                    this.graph.setConversations(accessToken, userConversations)
                         .catch((reason) => { throw new Error(`unable to store conversations ${reason}`) });
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
