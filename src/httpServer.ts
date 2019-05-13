@@ -59,8 +59,8 @@ function configureServer(httpServer: restify.Server) {
     //// Authentication logic for Web 
 
     httpServer.get('/login', (req, res, next) => {
-        let protocol = (req as any).encrypted ? 'https://' : 'http://';
         let host = req.headers.host;
+        let protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         let authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
         console.log(logger`redirecting to ${authUrl} `);
         res.redirect(authUrl, next);
