@@ -109,12 +109,13 @@ function configureServer(httpServer: restify.Server) {
     // Authentication logic for bot
 
     httpServer.get('/bot-login', (req, res, next) => {
+        let host = req.headers.host;
+        let protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         let conversationKey = req.query['conversationKey'] || '';
         let location = req.query['redirectUrl'];
-        let reqUrl = req.getUrl();
         let authUrl = app.authManager.authUrl({
             state: JSON.stringify({ key: conversationKey, url: location }),
-            redirect: reqUrl.host + AppConfig.authPath
+            redirect: protocol + host + AppConfig.authPath
         });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
