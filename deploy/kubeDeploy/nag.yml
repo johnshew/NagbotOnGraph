@@ -64,7 +64,7 @@ spec:
     targetPort: rest-port
   type:  LoadBalancer
   
-  ---
+---
 apiVersion: v1
 kind: Service
 metadata:
