@@ -43,28 +43,40 @@ spec:
               key: luisKey
         ports:
         - containerPort: 8080
-          name: restport
+          name: rest-port
         - containerPort: 3978
-          name: botport
+          name: bot-port
     
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: nagbot-service
+  name: nagbot-web-service
   labels:
     app: nagbot
 spec:
   selector:
     app: nagbot
   ports:
-  - name: nagbot-http
+  - name: nagbot-web-port
     protocol: TCP
     port: 80
-    targetPort: restport
-  - name: nagbot-botport
-    protocol: TCP
-    port: 3978
-    targetPort: botport
+    targetPort: rest-port
   type:  LoadBalancer
   
+  ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nagbot-bot-service
+  labels:
+    app: nagbot
+spec:
+  selector:
+    app: nagbot
+  ports:
+  - name: nagbot-bot-port
+    protocol: TCP
+    port: 80
+    targetPort: bot-port
+  type:  LoadBalancer
