@@ -55,7 +55,7 @@ export class AuthManager extends EventEmitter {
     // Once you have an AuthKey youoptions can get the OID.
 
     authUrl({ state, redirect }: { state?: string, redirect?: string } = { state: '' }) {
-        if (redirect)  this.redirectUrl = redirect;
+        if (redirect) this.redirectUrl = redirect;
         return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${this.redirectUrl}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
     }
 
@@ -66,7 +66,7 @@ export class AuthManager extends EventEmitter {
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
                 body += `&code=${code}`;
-                body += `&redirect_uri=${ this.redirectUrl }`;
+                body += `&redirect_uri=${this.redirectUrl}`;
                 body += `&grant_type=authorization_code&client_secret=${this.appPassword}`;
 
                 var res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
@@ -76,8 +76,13 @@ export class AuthManager extends EventEmitter {
                     },
                     body: body
                 });
-                console.log(logger`get newContextFromCode returned.`,res);
-                if (res.status !== 200) {                    
+
+                if (res.status !== 200) {
+                    let resultBody = '', chunk;
+                    while (null !== (chunk = res.body.read())) {
+                        resultBody += chunk;
+                    }
+                    console.log(logger`get newContextFromCode returned.`, res.statusText, resultBody);
                     return reject(`get newContextFromCode failed.`);
                 }
                 var data = await res.json();
