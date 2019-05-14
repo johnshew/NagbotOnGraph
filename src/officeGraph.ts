@@ -1,9 +1,7 @@
 import { default as fetch } from 'node-fetch';
-import { ConversationReference } from 'botbuilder';
-
-import { app } from './app';  //! BUG Should not include this
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+import { Conversation } from './conversations';
 import { logger } from './utils';
 
 export class OfficeGraph {
@@ -27,6 +25,7 @@ export class OfficeGraph {
 
     async get<T>(accessToken: string, url: string): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
+            console.log(logger`Office graph GET ${url}`);
             let response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -41,8 +40,8 @@ export class OfficeGraph {
         });
     }
 
-    async patch(accessToken: string, url: string, body: any) {
-        return new Promise<void>(async (resolve, reject) => {
+    async patch(accessToken: string, url: string, body: any): Promise<any> {
+        return new Promise<any>(async (resolve, reject) => {
             let options = {
                 method: 'patch',
                 headers: {
@@ -52,12 +51,19 @@ export class OfficeGraph {
                 },
                 body: JSON.stringify(body)
             }
-            let response = await fetch(url, options);
-            if (response.status == 200 || response.status == 204) {
-                let json = await response.json();
-                return resolve(json);
+            try {
+                let response = await fetch(url, options);
+                if (response.status == 200) {
+                    let json = await response.json();
+                    return resolve(json);
+                } else if (response.status == 204) {
+                    return resolve(null);
+                }
+                return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
+            } catch (err) {
+                console.log(logger`PATCH failed`, err);
+                return reject(err);
             }
-            return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
         });
     }
 
@@ -84,8 +90,7 @@ export class OfficeGraph {
 
 
 
-    async setConversations(oid: string, conversations: Partial<ConversationReference>[]) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);  //! BUG should remove authManager dependency
+    async setConversations(accessToken: string, conversations: Conversation[]) {
         try {
             let data = { id: 'net.shew.nagger', conversations };
             await this.patch(accessToken, `${this.graphUrl}/me/extensions/net.shew.nagger`, data);
@@ -97,16 +102,16 @@ export class OfficeGraph {
         try {
             let data = { extensionName: "net.shew.nagger", id: "net.shew.nagger", conversations };
             let location = await this.post(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions', data);
-        } catch(err) {
+        } catch (err) {
             throw new Error(`setConversation failed with error ${err} and token ${accessToken.substring(0, 5)}`);
         }
     }
 
-    async getConversations(oid: string) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);
-        let data = <any>await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger').catch((reason)=>Promise.resolve(null));
-        let conversations : any[] = data && data.conversations || [];
-        return <Partial<ConversationReference>[]>conversations;
+    async getConversations(accessToken: string) {
+        let data = await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+            .catch((reason) => Promise.resolve(null));
+        let conversations: any[] = data && data.conversations || [];
+        return <Conversation[]>conversations;
     }
 
     async findTasks(token: string): Promise<OutlookTask[]> {

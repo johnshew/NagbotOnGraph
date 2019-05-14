@@ -4,89 +4,122 @@
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no, minimal-ui">
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 
     <title>App</title>
 
     <!-- Required Stylesheets -->
-    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
-    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
-    <link type="text/css" rel="stylesheet" href="https://unpkg.com/vuesax/dist/vuesax.css" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
 
     <!-- Required scripts -->
-    <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
-    <script src="https://unpkg.com/vue"></script>
-    <script src="https://unpkg.com/http-vue-loader"></script>
-    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
-    <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
-    <script src="https://unpkg.com/vuesax/dist/vuesax.umd.js"></script> <!-- For sidebar -->
+    <script src="https://code.iconify.design/1/1.0.2/iconify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-router/dist/vue-router.js"></script>
 
-    <script src='./pages/home.vue.js'></script>    
-    <script src='./pages/tasks.vue.js'></script>
-    <script src='./pages/tests.vue.js'></script>
+
+    <script src='/public/pages/home.vue.js'></script>
+    <script src='/public/pages/connections.vue.js'></script>
+    <script src='/public/pages/tasks.vue.js'></script>
+    <script src='/public/pages/taskDetails.vue.js'></script>
+    <script src='/public/pages/tests.vue.js'></script>
 
 </head>
 
 <body>
-    <div class="container body-content">
-        <div id="app" v-cloak>
-            <router-link to="/home">
-                <b-button>Home</b-button>
-            </router-link>
-            <router-link to="/tasks">
-                <b-button>Tasks</b-button>
-            </router-link>
-            <router-link to="/tests">
-                <b-button>Tests</b-button>
-            </router-link>
-            <!-- <b-button href='./test.html'>Tests</b-button> -->
-            <router-view></router-view>
-        </div>
+    <div id="app">
+        <v-app>
+            <v-navigation-drawer class="blue lighten-5" v-model="drawer" temporary absolute width="200" id="drawer">
+                <v-list>
+                    <v-list-tile :to="'/home'">home</v-list-tile>
+                    <v-list-tile :to="'/tasks'">tasks</v-list-tile>
+                    <v-list-tile to="/connections">connections</v-list-tile>
+                    <v-list-tile :to="'/tests'">tests</v-list-tile>
+                </v-list>
+            </v-navigation-drawer>
+            <v-toolbar app dense dark color="primary">
+                <v-toolbar-side-icon @click.stop="drawer = !drawer" >
+                    <span class="iconify" data-icon="mdi-space-invaders" data-inline="false" data-width="2em"
+                        data-height="2em"></span>
+                </v-toolbar-side-icon>
+                <v-toolbar-title class="hidden-sm-and-down">Nag Bot</v-toolbar-title>
+                <v-spacer></v-spacer>
+                <v-toolbar-items class="hidden-xs-only">
+                    <v-btn to='/home' flat>home</v-btn>
+                    <v-btn to='/tasks' flat>tasks</v-btn>
+                    <v-btn to='/connections' flat>connections</v-btn>
+                    <v-btn to='/tests' flat>tests</v-btn>
+                </v-toolbar-items>
+
+            </v-toolbar>
+            <v-content>
+                <v-container fluid>
+                    <router-view v-bind:user="user" v-on:update-user="UpdateUser($event)" ></router-view>
+                </v-container>
+            </v-content>
+            <v-footer app></v-footer>
+        </v-app>
     </div>
 
     <!-- Start running your app -->
     <script>
         Vue.use(VueRouter);
+        Vue.use(Vuetify)
 
-        const routes = [{
-            path: '/home',
-            component: spaHome
-        },
-        {
-            path: '/tasks',
-            component: spaTasks
-        },
-        {
-            path: '/tests',
-            component: spaTests
-        }
-    ];
 
-        let router = new VueRouter({ routes });
+        const base = '/public/app.html';
+
+        const routes = [
+            { path: '/home', component: spaHome },
+            { path: '/connections', component: spaConnections },
+            { path: '/tasks', component: spaTasks },
+            { path: '/task/:id', component: spaTaskDetails },
+            { path: '/tests', component: spaTests }
+        ];
+
+        let router = new VueRouter({
+            mode: 'history',
+            base,
+            routes
+        });
 
         router.beforeEach((to, from, next) => {
-            next()
+            next();
         });
 
         window.app = new Vue({
             el: "#app",
             data: {
-                text: '',
-                active: false
+                active: false,
+                drawer: null, // See for example https://gist.github.com/oliverbth05/9834e9114b52b1f4ea77a0ae2d353e2f
+                user : null,
             },
             computed: {
-                valid() {
-                    return this.text.length > 0 ? true : false;
-                }
             },
             mounted() {
-                this.$router.push('/home');
+                if (window.location.pathname.indexOf('/app.html/') >= 0) {
+                    this.$router.push({ path: window.location.pathname.substring(base.length) });
+                } else {
+                    this.$router.push('home');
+                }
+            },
+            methods: {
+                UpdateUser(event) {
+                    // console.log('Got event', event)
+                    this.user = event;
+                }
             },
             router
         })
     </script>
-
+    <style>
+        html {
+            overflow-y: auto
+        }
+    </style>
 
 </body>
 
