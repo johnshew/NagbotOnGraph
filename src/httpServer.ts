@@ -72,8 +72,8 @@ function configureServer(httpServer: restify.Server) {
             // look for authorization code coming in (indicates redirect from interative login/consent)
             var code = req.query['code'];
             if (code) {
-                let protocol = (req as any).encrypted ? 'https://' : 'http://';
                 let host = req.headers.host;
+                let protocol =  host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
                 let authContext = await app.authManager.newContextFromCode(code, protocol + host + '/auth');
                 let profile = await app.graph.getProfile(await app.authManager.getAccessToken(authContext));
                 let user: User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
