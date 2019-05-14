@@ -5,7 +5,7 @@ var spaTasks = Vue.component("Tasks", {
     <template v-for="(task, index) in tasks">
         <v-layout row align-center pa-1 >
             <v-flex shrink >
-                <v-icon v-if="task.status === 'notStarted'" color="blue" @click="StatusChange(task)">check_circle_outline</v-icon>
+                <v-icon v-if="task.status === 'completed'" color="blue" @click="StatusChange(task)">check_circle_outline</v-icon>
                 <v-icon v-else color="blue" @click="StatusChange(task)">radio_button_unchecked</v-icon>
             </v-flex>
             <v-flex grow pa-1 >

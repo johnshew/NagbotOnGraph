@@ -25,6 +25,7 @@ export class OfficeGraph {
 
     async get<T>(accessToken: string, url: string): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
+            console.log(logger`Office graph GET ${url}`);
             let response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',

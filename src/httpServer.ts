@@ -1,4 +1,3 @@
-
 import * as restify from 'restify';
 import * as http from 'http';
 
