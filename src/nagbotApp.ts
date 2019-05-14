@@ -27,7 +27,7 @@ export class App {
 
         this.ready = new Promise(async (resolve, reject) => {
             try {
-                this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, 'error', AppConfig.authDefaultScopes);
+                this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl.href, AppConfig.authDefaultScopes);
                 this.authManager.on('refreshed', (context) => {
                     console.log(logger`user auth context was refreshed`, context);
                 });

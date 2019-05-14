@@ -158,6 +158,8 @@ export class AuthManager extends EventEmitter {
                     body: body
                 });
                 if (res.status !== 200) {
+                    let resBody = '', chunk; while ((chunk = res.body.read()) ? resBody=resBody+chunk: null);
+                    console.error(logger`refresh Token failed`,res.statusText,resBody)
                     return reject(`refresh token for failed with ${res.status} ${res.statusText} for user ${context.oid}`);
                 }
                 var data = await res.json();
