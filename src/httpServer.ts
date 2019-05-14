@@ -94,7 +94,6 @@ function configureServer(httpServer: restify.Server) {
                     });
                 } // else no state.key so it is a plain web login
                 res.redirect(state.url, next);
-                res.end();
                 return;
             }
         }
@@ -120,7 +119,6 @@ function configureServer(httpServer: restify.Server) {
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });
-
 
     //// Endpoints that are included in notifications 
 
@@ -315,11 +313,13 @@ function configureServer(httpServer: restify.Server) {
             notifyUser(authContext.oid);
             res.setHeader('Content-Type', 'text/html');
             res.end(htmlPageMessage('Test Notifications', 'Done with notifications', '<br/><a href="/">Continue</a></body></html>'));
+            return next();
         }
         catch (err) {
             console.log(`/test-notify failed ${err}`);
             res.setHeader('Content-Type', 'text/html');
             res.end(htmlPageMessage('Test Notifications', `Test Notifications failed.<\br>Error: ${err}`, '<br/><a href="/">Continue</a></body></html>'));
+            return next();
         }
     });
 

@@ -23,7 +23,7 @@ export class NagBotService {
         try {
             this.bot = new NagBot({ store: this.storage, conversationManager: this.conversationManager });
         } catch (err) {
-            console.error(logger`[botInitializationError]`,err);
+            console.error(logger`bot Initialization Error`,err);
             throw new Error ('Bot Initialization error');
         }
 
@@ -31,13 +31,15 @@ export class NagBotService {
         this.httpServer = restify.createServer();
         this.httpServer.name = 'BotServer';
         this.httpServer.listen(port, () => {
-            console.log(`${this.httpServer.name} listening to ${this.httpServer.url}`);
+            console.log(logger`${this.httpServer.name} listening to ${this.httpServer.url}`);
         });
 
-        this.httpServer.post('/api/messages', async (req, res) => {
+        this.httpServer.post('/api/messages', async (req, res, next) => {
+            console.log(logger`botservice got request.`);
             await this.adapter.processActivity(req, res, async (turnContext) => {
                 await this.bot.onTurn(turnContext);
             });
+            return next();
         });
     }
 
@@ -48,7 +50,7 @@ export class NagBotService {
                 return await logic(turnContext);
             });
         } catch (err) {
-            console.log('problem running activity in conversation.');
+            console.error(logger`problem running activity in conversation.`);
             // throw err;
         }
     }
@@ -56,7 +58,7 @@ export class NagBotService {
     async asyncClose(callback?: () => {}): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             this.httpServer.close(() => {
-                console.log('Closed nagbotService');
+                console.log(logger`Closed nagbotService`);
                 if (callback) callback();
                 return resolve();
             })
