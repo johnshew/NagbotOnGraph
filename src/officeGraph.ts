@@ -2,7 +2,7 @@ import { default as fetch } from 'node-fetch';
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 import { Conversation } from './conversations';
-import { logger } from './utils';
+import { logger, retry } from './utils';
 
 export class OfficeGraph {
 
@@ -38,6 +38,13 @@ export class OfficeGraph {
             }
             return reject(new Error(`GET for ${url} failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
         });
+    }
+
+    async getWithRetry<T>(accessToken: string, url: string, count = 5, delayMs = 1000): Promise<T> {
+        // return this.get<T>(accessToken,url);
+
+        return retry(count, delayMs, () => this.get<T>(accessToken, url))
+            .catch(e => { console.log(logger`GET retries failed`, e); throw e; })
     }
 
     async patch(accessToken: string, url: string, body: any): Promise<any> {
@@ -108,7 +115,7 @@ export class OfficeGraph {
     }
 
     async getConversations(accessToken: string) {
-        let data = await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+        let data = await this.getWithRetry(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
             .catch((reason) => Promise.resolve(null));
         let conversations: any[] = data && data.conversations || [];
         return <Conversation[]>conversations;
@@ -117,7 +124,7 @@ export class OfficeGraph {
     async findTasks(token: string): Promise<OutlookTask[]> {
         return new Promise<OutlookTask[]>(async (resolve, reject) => {
             try {
-                let tasks = await this.get<{ value: [OutlookTask] }>(token,
+                let tasks = await this.getWithRetry<{ value: [OutlookTask] }>(token,
                     `${this.graphUrlBeta}/me/outlook/tasks?${this.filterNotCompletedAndNagMeCategory}&${this.queryExpandNagExtensions}&`);
                 return resolve(tasks.value || []);
             }
