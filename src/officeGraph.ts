@@ -118,7 +118,7 @@ export class OfficeGraph {
         return new Promise<OutlookTask[]>(async (resolve, reject) => {
             try {
                 let tasks = await this.get<{ value: [OutlookTask] }>(token,
-                    `${this.graphUrlBeta}/me/outlook/tasks?${this.filterNotCompletedAndNagMeCategory}&${this.queryExpandNagExtensions}&`);
+                    `${this.graphUrlBeta}/me/outlook/tasks?${this.filterNotCompletedAndNagMeCategory}&${this.queryExpandNagExtensions}`);
                 return resolve(tasks.value || []);
             }
             catch (err) {
