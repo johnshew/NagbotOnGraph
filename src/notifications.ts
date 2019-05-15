@@ -48,7 +48,7 @@ async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvalu
                 let accessToken = await app.authManager.getAccessTokenFromOid(oid);
                 await app.graph.updateTask(accessToken, task);
             } catch (err) {
-                console.log(logger`notify/processActivityInConversation failed.`,err);
+                console.log(logger`taskNotify handling conversation failed.`,err);
             }
         });
     }

@@ -29,7 +29,7 @@ export class App {
             try {
                 this.authManager = new AuthManager(AppConfig.appId, AppConfig.appPassword, AppConfig.authUrl.href, AppConfig.authDefaultScopes);
                 this.authManager.on('refreshed', (context) => {
-                    console.log(logger`user auth context was refreshed`, context);
+                    console.log(logger`user auth context was refreshed.`, context);
                 });
                 this.graph = new OfficeGraph();
                 this.conversationManager = new ConversationManager();
@@ -44,7 +44,7 @@ export class App {
                 });
                 this.botService = new NagBotService(AppConfig.appId, AppConfig.appPassword, AppConfig.botPort, this.conversationManager);
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
-                    console.error(`[botOnTurnError]: ${error}`);
+                    console.error(`bot onTurn Error: ${error}`);
                 };
                 this.appHttpServer = new AppHttpServer(AppConfig.httpLocalServerPort);
 
