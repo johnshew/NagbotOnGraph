@@ -41,10 +41,14 @@ export class OfficeGraph {
     }
 
     async getWithRetry<T>(accessToken: string, url: string, count = 5, delayMs = 1000): Promise<T> {
-        // return this.get<T>(accessToken,url);
-
-        return retry(count, delayMs, () => this.get<T>(accessToken, url))
-            .catch(e => { console.log(logger`GET retries failed`, e); throw e; })
+        for (let i = 0; i++; i < 5) {
+            try {
+                return this.get<T>(accessToken, url);
+            } catch (err) {
+                console.log(logger`caught GET error`,err)
+            }
+        }
+        throw new Error(logger`GET with retry failed.`)
     }
 
     async patch(accessToken: string, url: string, body: any): Promise<any> {
