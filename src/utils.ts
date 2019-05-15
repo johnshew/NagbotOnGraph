@@ -33,10 +33,6 @@ function show(item: any) {
     }
 }
 
-if (false) {
-    console.log(logger`log test ${{ foo: 'foo' }} ${10}`);
-    console.log(logger`multiple args test`, new Error('Test'));
-}
 
 export function delay<T>(t: number, value?: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(value), t));
@@ -49,9 +45,9 @@ export async function retry<T>(count : number, msDelay : number, callback : () =
             try {
                 result = await callback();
                 return resolve(result);
-            } catch (err) {
-                // assume underlying function does any logging.
+            } catch (err) {                
             }
+            console.log(logger`retry error ${i+1} waiting ${msDelay}`);
             await delay(msDelay);
             msDelay *= 2;
         }

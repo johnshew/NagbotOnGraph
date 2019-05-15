@@ -25,7 +25,7 @@ export class OfficeGraph {
 
     async get<T>(accessToken: string, url: string): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
-            console.log(logger`Office graph GET ${url}`);
+            console.log(logger`Office graph GET ${url} with token ${accessToken.substring(0,6)}`);
             let response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -33,10 +33,12 @@ export class OfficeGraph {
                 }
             });
             if (response.status == 200 || response.status == 204) {
-                let data = await response.json();
+                let data = null;
+                data = await response.json().catch(err => console.log(logger`GET failed json`));
                 return resolve(data);
             }
-            return reject(new Error(`GET for ${url} failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
+            console.log(logger`GET for ${url} failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`)
+            return reject(new Error(`GET for ${url} failed`));
         });
     }
 
@@ -118,7 +120,7 @@ export class OfficeGraph {
     }
 
     async getConversations(accessToken: string) {
-        let data = await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+        let data = await this.getWithRetry(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
             .catch((reason) => Promise.resolve(null));
         let conversations: any[] = data && data.conversations || [];
         return <Conversation[]>conversations;
