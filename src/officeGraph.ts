@@ -2,7 +2,7 @@ import { default as fetch } from 'node-fetch';
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 import { Conversation } from './conversations';
-import { logger, retry } from './utils';
+import { logger, retry, sleep } from './utils';
 
 export class OfficeGraph {
 
@@ -45,8 +45,10 @@ export class OfficeGraph {
             try {
                 return this.get<T>(accessToken, url);
             } catch (err) {
-                console.log(logger`caught GET error`,err)
+                console.log(logger`caught GET error. retrying in ${delayMs} msec`,err)
             }
+            await sleep(delayMs);
+            delayMs *= 2;
         }
         throw new Error(logger`GET with retry failed.`)
     }
