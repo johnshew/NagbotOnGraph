@@ -43,28 +43,30 @@ export class AuthContext {
 
 export class AuthManager extends EventEmitter {
 
-    private userAuthKeyToTokensMap = new Map<string, AuthContext>(); // UserAuthKey to AuthTokens
+    userAuthKeyToTokensMap = new Map<string, AuthContext>(); // UserAuthKey to AuthTokens
 
-    constructor(private appId: string, private appPassword: string, private defaultRedirectUri: string, private scopes: string[] = []) {
+    constructor(private appId: string, private appPassword: string, private redirectUrl: string = "error", private scopes: string[] = []) {
         super();
     }
 
     // Clients of the authManager interact with it using an opaque AuthKey (string) or OID (string).  
     // The AuthKey doesn't contain any PII and can be shared with a client over protected channels.
     // Clients get an AuthKey by redirecting to the AuthUrl. This will redirect back to the web server.  On the redirect back you get the code from query string and ask for the users AuthKey.
-    // Once you have an AuthKey you can get the OID.
+    // Once you have an AuthKey youoptions can get the OID.
 
-    authUrl(state: string = ''): string {
-        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${this.defaultRedirectUri}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
+    authUrl({ state, redirect }: { state?: string, redirect?: string } = { state: '' }) {
+        if (redirect) this.redirectUrl = redirect;
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${this.appId}&response_type=code&redirect_uri=${this.redirectUrl}&scope=${this.scopes.join('%20')}&state=${encodeURI(state)}`;
     }
 
-    async newContextFromCode(code: string): Promise<AuthContext> {
+    async newContextFromCode(code: string, redirect?: string): Promise<AuthContext> {
+        if (redirect) this.redirectUrl = redirect;
         return new Promise(async (resolve, reject) => {
             try {
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
                 body += `&code=${code}`;
-                body += `&redirect_uri=${this.defaultRedirectUri}`;
+                body += `&redirect_uri=${this.redirectUrl}`;
                 body += `&grant_type=authorization_code&client_secret=${this.appPassword}`;
 
                 var res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
@@ -74,7 +76,15 @@ export class AuthManager extends EventEmitter {
                     },
                     body: body
                 });
-                if (res.status !== 200) { return reject(`get newContextFromCode failed.`); }
+
+                if (res.status !== 200) {
+                    let resultBody = '', chunk;
+                    while (null !== (chunk = res.body.read())) {
+                        resultBody += chunk;
+                    }
+                    console.log(logger`get newContextFromCode returned.`, res.statusText, resultBody);
+                    return reject(`get newContextFromCode failed.`);
+                }
                 var data = await res.json();
                 if (data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
@@ -137,7 +147,7 @@ export class AuthManager extends EventEmitter {
                 var body = `client_id=${this.appId}`;
                 body += `&scope=${this.scopes.join('%20')}`;
                 body += `&refresh_token=${context.refreshToken}`;
-                body += `&redirect_uri=${this.defaultRedirectUri}`;
+                body += `&redirect_uri=${this.redirectUrl}`;
                 body += `&grant_type=refresh_token&client_secret=${this.appPassword}`;
 
                 var res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
@@ -148,6 +158,8 @@ export class AuthManager extends EventEmitter {
                     body: body
                 });
                 if (res.status !== 200) {
+                    let resBody = '', chunk; while ((chunk = res.body.read()) ? resBody=resBody+chunk: null);
+                    console.error(logger`refresh Token failed`,res.statusText,resBody)
                     return reject(`refresh token for failed with ${res.status} ${res.statusText} for user ${context.oid}`);
                 }
                 var data = await res.json();

@@ -1,8 +1,7 @@
-
 import * as restify from 'restify';
 import * as http from 'http';
 
-import { app, AppConfig } from './app';
+import { app, AppConfig } from './nagbotApp';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
 import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types-beta';
 import { notifyUser } from './notifications';
@@ -53,13 +52,15 @@ function configureServer(httpServer: restify.Server) {
     //// Static pages
 
     httpServer.get('/', (req, res, next) => { res.redirect('./public/app.html', next); });
-
+    httpServer.get("/public/app.html*", restify.plugins.serveStatic({ directory: __dirname + '/../public', file: "app.html" }));
     httpServer.get("/public/*", restify.plugins.serveStatic({ directory: __dirname + '/..' }));
 
     //// Authentication logic for Web 
 
     httpServer.get('/login', (req, res, next) => {
-        let authUrl = app.authManager.authUrl();
+        let host = req.headers.host;
+        let protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
+        let authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
         console.log(logger`redirecting to ${authUrl} `);
         res.redirect(authUrl, next);
     });
@@ -70,9 +71,11 @@ function configureServer(httpServer: restify.Server) {
             // look for authorization code coming in (indicates redirect from interative login/consent)
             var code = req.query['code'];
             if (code) {
-                let authContext = await app.authManager.newContextFromCode(code);
+                let host = req.headers.host;
+                let protocol =  host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
+                let authContext = await app.authManager.newContextFromCode(code, protocol + host + '/auth');
                 let profile = await app.graph.getProfile(await app.authManager.getAccessToken(authContext));
-                let user : User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
+                let user: User = { oid: authContext.oid, authKey: authContext.authKey, authTokens: authContext };
                 if (profile.preferredName) user.preferredName = profile.preferredName;
                 if (profile.mail) user.email = profile.mail;
                 await app.users.set(authContext.oid, user);
@@ -81,7 +84,7 @@ function configureServer(httpServer: restify.Server) {
                 let state: any = {}
                 try { state = JSON.parse(stateString); } catch (e) { }
                 if (!state.url) state.url = '/';
-                if (state.key) { 
+                if (state.key) {
                     // should send verification code to user via web and wait for it on the bot.
                     // ignore for now.
                     let conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, authContext.oid);
@@ -90,7 +93,6 @@ function configureServer(httpServer: restify.Server) {
                     });
                 } // else no state.key so it is a plain web login
                 res.redirect(state.url, next);
-                res.end();
                 return;
             }
         }
@@ -106,13 +108,17 @@ function configureServer(httpServer: restify.Server) {
     // Authentication logic for bot
 
     httpServer.get('/bot-login', (req, res, next) => {
+        let host = req.headers.host;
+        let protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         let conversationKey = req.query['conversationKey'] || '';
         let location = req.query['redirectUrl'];
-        let authUrl = app.authManager.authUrl(JSON.stringify({ key: conversationKey, url: location }));
+        let authUrl = app.authManager.authUrl({
+            state: JSON.stringify({ key: conversationKey, url: location }),
+            redirect: protocol + host + AppConfig.authPath
+        });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });
-
 
     //// Endpoints that are included in notifications 
 
@@ -170,26 +176,80 @@ function configureServer(httpServer: restify.Server) {
 
     // APIs - no html - just json response
 
-    httpServer.get('/api/v1.0/tasks', async (req, res, next) => {
-        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.filterNotCompletedAndNagMeCategory}&${app.graph.queryExpandNagExtensions}`);
-        // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
-    })
-
-    httpServer.get('/api/v1.0/tasks/:id', async (req, res, next) => {
-        let id = req.params["id"];
-        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`);
-    })
-
-    httpServer.patch('/api/v1.0/tasks/:id', async (req, res, next) => {
-        let id = req.params["id"];
-        let data = req.body;
-        await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
-    })
 
     httpServer.get('/api/v1.0/me', async (req, res, next) => {
         await graphGet(req, res, next, "https://graph.microsoft.com/v1.0/me");
     })
 
+    httpServer.get('/api/v1.0/me/tasks', async (req, res, next) => {
+        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks?${app.graph.queryExpandNagExtensions}`);
+        // https://graph.microsoft.com/beta/me/outlook/tasks?filter=(dueDateTime/DateTime) gt  '2018-12-04T00:00:00Z'
+    })
+
+    httpServer.get('/api/v1.0/me/tasks/:id', async (req, res, next) => {
+        let id = req.params["id"];
+        await graphGet(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`);
+    })
+
+    httpServer.patch('/api/v1.0/me/tasks/:id', async (req, res, next) => {
+        let id = req.params["id"];
+        let data = req.body;
+        await graphPatch(req, res, next, `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
+    })
+
+    httpServer.get('/api/v1.0/me/connections', async (req, res, next) => {
+        let error: any;
+        try {
+            let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
+            let conversations = await app.graph.getConversations(accessToken);
+            res.json(200, conversations);
+            res.end();
+            return next();
+        }
+        catch (err) {
+            error = err;
+        }
+        res.status(400);
+        res.json({ error });
+        res.end();
+        return next();
+    })
+
+    httpServer.patch('/api/v1.0/me/connections/:id', async (req, res, next) => {
+        let id = req.params["id"];  // this is ignored for now
+        let data = req.body;
+        let error: any;
+        try {            
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            if (!authContext || !authContext.oid) throw new Error('/me/connections-PATCH: Could not identify user');
+            app.conversationManager.upsert(authContext.oid, data);
+            res.status(200);
+            res.end();
+            return next();
+        } catch (err) { error = error }
+        res.status(400);
+        res.json({ error });
+        res.end();
+        return next();
+    })
+
+    httpServer.del('/api/v1.0/me/connections/:id', async (req, res, next) => {
+        let id = req.params["id"];  // this is ignored for now
+        let data = req.body;
+        let error: any;
+        try {            
+            let authContext = await app.authManager.getAuthContextFromAuthKey(getCookie(req, 'userId'));
+            if (!authContext || !authContext.oid) throw new Error('/me/connections-PATCH: Could not identify user');
+            app.conversationManager.delete(authContext.oid, data);
+            res.status(200);
+            res.end();
+            return next();
+        } catch (err) { error = error }
+        res.status(400);
+        res.json({ error });
+        res.end();
+        return next();
+    })
 
     /// Interactive Tests
 
@@ -253,11 +313,13 @@ function configureServer(httpServer: restify.Server) {
             notifyUser(authContext.oid);
             res.setHeader('Content-Type', 'text/html');
             res.end(htmlPageMessage('Test Notifications', 'Done with notifications', '<br/><a href="/">Continue</a></body></html>'));
+            return next();
         }
         catch (err) {
             console.log(`/test-notify failed ${err}`);
             res.setHeader('Content-Type', 'text/html');
             res.end(htmlPageMessage('Test Notifications', `Test Notifications failed.<\br>Error: ${err}`, '<br/><a href="/">Continue</a></body></html>'));
+            return next();
         }
     });
 
@@ -296,8 +358,14 @@ async function graphGet(req: restify.Request, res: restify.Response, next: resti
     catch (err) {
         errorMessage = 'graphForwarder error.  Detail: ' + err;
     }
-    res.setHeader('Content-Type', 'text/html');
-    res.end(htmlPageFromList('Error', errorMessage, [], '<a href="/">Continue</a>'));
+    if (composer) {
+        res.setHeader('Content-Type', 'text/html');
+        res.end(htmlPageFromList('Error', errorMessage, [], '<a href="/">Continue</a>'));
+    } else {
+        res.status(400);
+        res.json({ errorMessage });
+        res.end();
+    }
     return next();
 }
 
@@ -306,6 +374,8 @@ async function graphPatch(req: restify.Request, res: restify.Response, next: res
     try {
         let accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
         let result = await app.graph.patch(accessToken, url, data);
+        res.json(200, result);
+        res.end();
         return next();
     }
     catch (err) {

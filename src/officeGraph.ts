@@ -1,9 +1,7 @@
 import { default as fetch } from 'node-fetch';
-import { ConversationReference } from 'botbuilder';
-
-import { app } from './app';  //! BUG Should not include this
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+import { Conversation } from './conversations';
 import { logger, retry } from './utils';
 
 export class OfficeGraph {
@@ -27,6 +25,7 @@ export class OfficeGraph {
 
     async get<T>(accessToken: string, url: string): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
+            console.log(logger`Office graph GET ${url}`);
             let response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -57,12 +56,19 @@ export class OfficeGraph {
                 },
                 body: JSON.stringify(body)
             }
-            let response = await fetch(url, options);
-            if (response.status == 200 || response.status == 204) {
-                let json = await response.json();
-                return resolve(<T>json);
+            try {
+                let response = await fetch(url, options);
+                if (response.status == 200) {
+                    let json = await response.json();
+                    return resolve(json);
+                } else if (response.status == 204) {
+                    return resolve(null);
+                }
+                return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
+            } catch (err) {
+                console.log(logger`PATCH failed`, err);
+                return reject(err);
             }
-            return reject(new Error(`PATCH failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
         });
     }
 
@@ -92,8 +98,9 @@ export class OfficeGraph {
         });
     }
 
-    async setConversations(oid: string, conversations: Partial<ConversationReference>[]) {
-        let accessToken = await app.authManager.getAccessTokenFromOid(oid);  //! BUG should remove authManager dependency
+
+
+    async setConversations(accessToken: string, conversations: Conversation[]) {
         try {
             let data = { id: 'net.shew.nagger', conversations };
             await this.patch(accessToken, `${this.graphUrl}/me/extensions/net.shew.nagger`, data);
@@ -111,10 +118,10 @@ export class OfficeGraph {
     }
 
     async getConversations(accessToken: string) {
-        return this.getWithRetry<{ conversations?: Partial<ConversationReference>[] }>(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
-            .then(data => data && data.conversations || [])
-            .catch(e => { console.log(logger`unable to get conversations`); throw e });
-
+        let data = await this.get(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+            .catch((reason) => Promise.resolve(null));
+        let conversations: any[] = data && data.conversations || [];
+        return <Conversation[]>conversations;
     }
 
     async findTasks(token: string): Promise<OutlookTask[]> {

@@ -1,43 +1,57 @@
 var spaHome = Vue.component("Home", {
-    template: `<div>
-    <div style="margin-bottom: 10px;"></div>
+    template: /*html*/`
+<div>
+    <div style="padding: 1px;"></div>
     <div v-if="id !== null">
-        <b-jumbotron header="NagBot Welcomes You" :lead="displayName + ', how can I help?'">
+        <h3>Welcome {{ displayName }}</h3>
         <p>Your id is {{ id }}</p>
-        </b-jumbotron>
     </div>
     <div v-else>
-        You are not logged in. Please <a href="../login">login</a>
+        You are not logged in. Please <a href="/login">login</a>
     </div>
 </div>`,
-    props: ["title"],
+    props: {
+        user: Object
+    },
     data() {
         return {
-            displayName : null,
-            id : null
+            progress: false,
+            ready: false
         };
     },
     created() {
-        this.GetUser();
+        if (!this.user) {
+            this.GetUser();
+        }
+    },
+    computed: {
+        displayName: function () {
+            let result = this.user ? this.user.displayName : null;
+            return result;
+        }
+        ,
+        id: function () {
+            let result = this.user ? this.user.id : null;
+            return result;
+        }
     },
     methods: {
         GetUser() {
-            window.fetch("/api/v1.0/me")
-            .then(response => {
-                return response.json();                
-            }).then(json => {
-                this.displayName = json.displayName;
-                this.id = json.id;
-                return json;
-            })
-            .catch(err => {
-                console.error('Error:', err);
-            });
-
-            this.progress = true;
-            this.ready = true;
-
-            this.user = { preferredName : 'Nag Tester'};
+            window.fetch("/api/v1.0/me", {cache: "no-store"})
+                .then(response => {
+                    if (response.status != 200) return null;
+                    return response.json();
+                }).then(json => {
+                    if (json) {
+                        this.progress = true;
+                        this.ready = true;
+                        this.$emit("update-user", json);
+                        return;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error', err);
+                });
         }
     }
 });

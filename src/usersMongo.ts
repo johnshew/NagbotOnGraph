@@ -1,7 +1,7 @@
 import { Collection, MongoClient } from 'mongodb';
 import { logger } from './utils';
-import { app, AppConfig } from './app';
 import { User, Users } from './users';
+import { app } from './nagbotApp';
 
 export class UsersMongo extends Users {
 
@@ -24,8 +24,9 @@ export class UsersMongo extends Users {
                     for (const user of users) {
                         try {
                             this.set(user.oid, user);
-                            let context = await app.authManager.loadAuthContext(user.authTokens);
-                            let conversationsData = await app.graph.getConversations(context.accessToken);
+                            let authContext = await app.authManager.loadAuthContext(user.authTokens);
+                            let accessToken = await app.authManager.getAccessToken(authContext);
+                            let conversationsData = await app.graph.getConversations(accessToken);
                             app.conversationManager.load(user.oid, conversationsData);
                             let conversations = app.conversationManager.findAll(user.oid);
                             for (const converation of conversations) {

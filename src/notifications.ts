@@ -1,6 +1,6 @@
 
 import { OutlookTask } from '@microsoft/microsoft-graph-types-beta';
-import { app, AppConfig } from './app';
+import { app, AppConfig } from './nagbotApp';
 import { logger } from './utils';
 
 export async function notify(forceNotifications: boolean = false) {
@@ -15,16 +15,17 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
     try {
         let accessToken = await app.authManager.getAccessTokenFromOid(oid);
         let user = app.users.get(oid);
-        console.log(logger`checking notifications for ${user.email} (${oid})`);
+        console.log(logger`checking notifications for ${user.email} (${oid.substring(0,5)}...)`);
         let tasks = await app.graph.findTasks(accessToken);
-        for await (const task of tasks) {
+        console.log(logger`found ${tasks.length} tasks`);
+        for (const task of tasks) {
             let policy = evaluateNotificationPolicy(task);
             if (!policy.notify && !forceNotifications) continue;
-            taskNotify(oid, task, policy);
+            await taskNotify(oid, task, policy);
         }
     }
     catch (err) {
-        let context = app.authManager.getAuthContextFromOid(oid);
+        let context = await app.authManager.getAuthContextFromOid(oid);
         console.log(logger`notify failed at ${new Date(Date.now()).toString()} and token expires ${ context.expiresOn.toString() }`,err);
     }
 }
@@ -32,7 +33,8 @@ export async function notifyUser(oid: string, forceNotifications: boolean = fals
 async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvaluationResult) {
     console.log(logger`task "${task.subject}" is ready with last nag date of ${ policy.lastNag.toString() }`);
     let conversations = app.conversationManager.findAll(oid);
-    for await (const conversation of conversations) {
+    for (const conversation of conversations) {
+        if (!conversation.nagEnabled) continue;
         await app.botService.processActivityInConversation(conversation, async turnContext => {
             try {
                 let dueMessage = (policy.daysUntilDue >= 0) ? `due in ${policy.daysUntilDue} days` : `overdue by ${-policy.daysUntilDue} days`;
@@ -40,7 +42,7 @@ async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvalu
                 let now = new Date(Date.now());
 
                 console.log(logger`sending notificaton to ${conversation.channelId} (${conversation.conversation.id.substring(0,20)}...`)
-                await turnContext.sendActivity(`Reminder for "${task.subject}".\nIt is ${dueMessage}. [link](${editUrl})`);
+                await turnContext.sendActivity(`Reminder for "${task.subject}". \r\nIt is ${dueMessage}. [link](${editUrl})`);
 
                 updateNagLast(task, now);
                 let accessToken = await app.authManager.getAccessTokenFromOid(oid);

@@ -1,39 +1,59 @@
 import { ConversationReference } from 'botbuilder';
 import { EventEmitter } from 'events';
-import { DH_CHECK_P_NOT_SAFE_PRIME } from 'constants';
+
+export interface Conversation extends Partial<ConversationReference> {
+    nagEnabled? : boolean
+}
 
 export class ConversationManager extends EventEmitter {
 
-    private conversationsByUser = new Map<string, Partial<ConversationReference>[]>(); // all known conversations associated with a user (oid) 
-    private unauthenticatedConversationsByTempKey = new Map<string, Partial<ConversationReference>>();  // all conversations not associated with a user (oid) indexed by their tempKey
+    private conversationsByUser = new Map<string, Conversation[]>(); // all known conversations associated with a user (oid) 
+    private unauthenticatedConversationsByTempKey = new Map<string, Conversation>();  // all conversations not associated with a user (oid) indexed by their tempKey
 
     constructor() { super(); }
 
-    findAll(oid: string): Partial<ConversationReference>[] {
+    findAll(oid: string): Conversation[] {
         let conversations = this.conversationsByUser.get(oid);
         return conversations || [];
     }
 
-    find(oid: string, predicate: (value: Partial<ConversationReference>, index: number, obj: Partial<ConversationReference>[]) => boolean) {
+    find(oid: string, predicate: (value: Conversation, index: number, obj: Conversation[]) => boolean) {
         let conversations = this.conversationsByUser.get(oid);
         return conversations.find(predicate)
     }
 
-    insert(oid: string, conversation: Partial<ConversationReference>) {
+    initializeConversations(oid: string) {
+        let conversations = [] as Conversation[];
+        this.conversationsByUser.set(oid, conversations);
+        return conversations;
+    }
+
+    upsert(oid: string, conversation: Conversation) {
         if (!oid) throw 'oid cannot be null';
         let conversations = this.conversationsByUser.get(oid);
-        if (!conversations) {
-            conversations = [];
-            this.conversationsByUser.set(oid, conversations);
+        if (!conversations) { conversations = this.initializeConversations(oid); }
+        let index = conversations.findIndex((x) => compare(x, conversation));
+        if (index < 0) { conversations.push(conversation); }
+        else {
+            let result = { nagEnabled: true, ...conversations[index], ...conversation };
+            conversations[index] = result;
         }
-        let exists = conversations.find((x) => compare(x, conversation));
-        if (exists) { console.log('Duplicate conversation found.'); return }
-        conversations.push(conversation);
+        this.conversationsByUser.set(oid, conversations);
         this.emit('updated', oid, conversation, this);
         return;
     }
 
-    load(oid: string, conversations: Partial<ConversationReference>[]) {
+    delete(oid: string, conversation: Conversation) {
+        if (!oid) throw 'oid cannot be null';
+        let conversations = this.conversationsByUser.get(oid);
+        if (!conversations) { return; } // doesn't exist so consider it deleted
+        conversations = conversations.filter(item => !compare(item,conversation));
+        this.conversationsByUser.set(oid, conversations);
+        this.emit('updated', oid, conversation, this);
+        return;
+    }
+
+    load(oid: string, conversations: Conversation[]) {
         this.conversationsByUser.set(oid, conversations); // does not fire updated events
     }
 
@@ -42,7 +62,7 @@ export class ConversationManager extends EventEmitter {
         this.emit("updated", oid, null, this);
     }
 
-    addUnauthenticatedConversation(tempKey: string, conversation: Partial<ConversationReference>) {
+    addUnauthenticatedConversation(tempKey: string, conversation: Conversation) {
         if (!tempKey) throw 'tempKey can not be null';
         this.unauthenticatedConversationsByTempKey.set(tempKey, conversation);
     }
@@ -50,18 +70,18 @@ export class ConversationManager extends EventEmitter {
     setOidForUnauthenticatedConversation(tempKey: string, oid: string) {
         let conversation = this.unauthenticatedConversationsByTempKey.get(tempKey);
         this.unauthenticatedConversationsByTempKey.delete(tempKey);
-        this.insert(oid, conversation);
+        this.upsert(oid, conversation);
         return conversation;
     }
 
 }
 
 export declare interface ConversationManager {
-    on(event: 'updated', listener: (oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager) => void): this;
-    emit(event: 'updated', oid: string, conversation: Partial<ConversationReference>, thisArg: ConversationManager): boolean
+    on(event: 'updated', listener: (oid: string, conversation: Conversation, thisArg: ConversationManager) => void): this;
+    emit(event: 'updated', oid: string, conversation: Conversation, thisArg: ConversationManager): boolean
 }
 
-export function compare(l: Partial<ConversationReference>, r: Partial<ConversationReference>): boolean {
+export function compare(l: Conversation, r: Conversation): boolean {
     let result = (l.serviceUrl === r.serviceUrl) && (l.channelId === r.channelId) && (l.conversation.id === r.conversation.id)
     return result;
 }

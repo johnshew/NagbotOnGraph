@@ -58,3 +58,7 @@ export async function retry<T>(count : number, msDelay : number, callback : () =
         return reject('retry failed');
     });
 }
+
+export function sleep(ms : number) {
+    return new Promise<void>(resolve => setTimeout(resolve, ms));
+}
