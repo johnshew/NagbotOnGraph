@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: nagbotdev
-        image: johnshew/nagbotongraph:latest
+        image: johnshew/nagbotongraph:dev
         imagePullPolicy: Always
         env:
         - name: appId
