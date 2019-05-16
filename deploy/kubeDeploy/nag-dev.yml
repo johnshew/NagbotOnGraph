@@ -54,10 +54,10 @@ kind: Service
 metadata:
   name: nagbot-web-service-dev
   labels:
-    app: nagbot
+    app: nagbotdev
 spec:
   selector:
-    app: nagbot
+    app: nagbotdev
   ports:
   - name: nagbot-web-port
     protocol: TCP
@@ -71,10 +71,10 @@ kind: Service
 metadata:
   name: nagbot-bot-service-dev
   labels:
-    app: nagbot
+    app: nagbotdev
 spec:
   selector:
-    app: nagbot
+    app: nagbotdev
   ports:
   - name: nagbot-bot-port
     protocol: TCP
