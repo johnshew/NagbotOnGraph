@@ -24,8 +24,8 @@ export class OfficeGraph {
     };
 
     async get<T>(accessToken: string, url: string): Promise<T> {
+        console.log(logger`GET ${url} with token ending in ${accessToken.substring(accessToken.length - 20)}`);
         return new Promise<T>(async (resolve, reject) => {
-            console.log(logger`Office graph GET ${url}`);
             let response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
@@ -36,26 +36,56 @@ export class OfficeGraph {
                 let data = await response.json();
                 return resolve(data);
             }
-            return reject(new Error(`GET for ${url} failed with ${response.status} ${response.statusText} and token ${accessToken.substring(0, 5)}`));
+            return reject(new Error(`GET for ${url} failed with ${response.status} ${response.statusText}`));
         });
     }
 
     async getWithRetry<T>(accessToken: string, url: string, count = 5, delayMs = 1000): Promise<T> {
-        let wacko = false;
-        if (wacko) {
+        let result;
+        let wacko = "TryBoth";
+        console.log(logger`graph GET with retry using ${wacko} for ${url}`);
+        if (wacko == "WithAwait") {
             // this works
-            let result = await this.get<T>(accessToken, url);
+            result = await this.get<T>(accessToken, url)
             return result;
-        } else {
+        } else if (wacko == "TryCatchWithAwait") {
             // this doesn't work;
             try {
-                let result = await this.get<T>(accessToken, url);
+                result = await this.get<T>(accessToken, url);
                 return result;
             } catch (err) {
                 console.log(logger`caught GET error.`, err)
             }
+        } else if (wacko == "WithPromise") {
+            // this works, notice there is no await so it returns the promise directly.
+            result = this.get<T>(accessToken, url)
+            return result;
+        } else if (wacko == "WithPromiseAndCatch") {
+            // this does not work!
+            result = this.get<T>(accessToken, url)
+                .catch(err => { console.log(logger`caught GET error.`, err); throw err });
+            return result;
+        } else if (wacko == "TryCatchWithPromise") {
+            // this works
+            try {
+                result = this.get<T>(accessToken, url);
+                return result;
+            } catch (err) { console.log(logger`caught GET error.`, err) }
+        } else if (wacko = "TryBoth") {
+            // this doesn't work;
+            try {
+                result = await this.get<T>(accessToken, url);
+                return result;
+            } catch (err) {
+                console.log(logger`caught GET error.`, err)
+            }
+            // so try this which has been working
+            console.log(logger`retry with await on GET.`)
+            result = await this.get<T>(accessToken, url);
+            return result;
         }
     }
+
 
     async patch(accessToken: string, url: string, body: any): Promise<any> {
         return new Promise<any>(async (resolve, reject) => {
