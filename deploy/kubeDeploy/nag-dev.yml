@@ -13,7 +13,7 @@ spec:
         app: nagbotdev
     spec:
       containers:
-      - name: nagbotdev
+      - name: nagbotongraph
         image: johnshew/nagbotongraph:dev
         imagePullPolicy: Always
         env:
