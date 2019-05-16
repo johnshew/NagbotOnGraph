@@ -106,7 +106,7 @@ export class AuthManager extends EventEmitter {
         if (context && context.accessToken && context.expiresOn && context.expiresOn.valueOf() > Date.now().valueOf()) { return context.accessToken; }
         if (context && context.refreshToken) {
             await this.refreshTokens(context);
-            return context.accessToken;
+            return this.userAuthKeyToTokensMap.get(context.authKey).accessToken;
         }
         throw new Error('Unable to acquire access_token');
     }
@@ -128,7 +128,7 @@ export class AuthManager extends EventEmitter {
     async setAuthContext(context: AuthContext, refresh = true) {
         if (isDeepStrictEqual(this.userAuthKeyToTokensMap.get(context.authKey), context)) return;
         this.userAuthKeyToTokensMap.set(context.authKey, context);
-        if (refresh) await this.getAccessToken(context); // forces refresh if needed
+        if (refresh)  await this.getAccessToken(context); // forces refresh if needed
         this.emit('refreshed', context);
     }
 
@@ -170,7 +170,7 @@ export class AuthManager extends EventEmitter {
                 let update = new AuthContext().loadFromToken(data);
                 console.log(logger`refreshed token ${update.accessToken.substring(0, 20)} now expires ${update.expiresOn.toString()}`);
                 await this.setAuthContext(update,false);
-                return resolve();
+                return resolve(update);
             }
             catch (err) {
                 console.log(logger`error refreshing tokens`, err);
