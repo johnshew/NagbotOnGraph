@@ -38,23 +38,20 @@ export function delay<T>(t: number, value?: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(value), t));
 }
 
-export async function retry<T>(count : number, msDelay : number, callback : () => Promise<T> ) {
-    return new Promise<T>(async (resolve, reject) => {
-        let result : T;
-        for (let i = 0; i<count; i++) {
-            try {
-                result = await callback();
-                return resolve(result);
-            } catch (err) {                
-            }
-            console.log(logger`retry error ${i+1} waiting ${msDelay}`);
-            await delay(msDelay);
-            msDelay *= 2;
+export async function retry<T>(count: number, msDelay: number, callback: () => Promise<T>) {
+    for (let i = 0; i < count; i++) {
+        try {
+            let result = await callback();
+            return result;
+        } catch (err) {
         }
-        return reject('retry failed');
-    });
+        console.log(logger`retry ${i + 1} waiting ${msDelay}`);
+        await delay(msDelay);
+        msDelay *= 2;
+    }
+    throw new Error(logger`retrying failed.`);
 }
 
-export function sleep(ms : number) {
+export function sleep(ms: number) {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
