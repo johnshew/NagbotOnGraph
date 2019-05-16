@@ -48,7 +48,7 @@ async function taskNotify(oid: string, task: OutlookTask, policy: NagPolicyEvalu
                 let accessToken = await app.authManager.getAccessTokenFromOid(oid);
                 await app.graph.updateTask(accessToken, task);
             } catch (err) {
-                console.log(logger`notify/processActivityInConversation failed.`,err);
+                console.log(logger`taskNotify handling conversation failed.`,err);
             }
         });
     }
@@ -79,7 +79,7 @@ function evaluateNotificationPolicy(task: OutlookTask): NagPolicyEvaluationResul
         default:
             // once per hour on day of nag or overdue otherwise once per day
             let dueOrOverdue = daysUntilDue < 1;
-            let notify = ((dueOrOverdue && minsSinceNag > AppConfig.dueTodayPolicyInterval) || (!dueOrOverdue && minsSinceNag > 24 * 60));
+            let notify = ((dueOrOverdue && minsSinceNag > AppConfig.dueTodayPolicyIntervalMin) || (!dueOrOverdue && minsSinceNag > 24 * 60));
             return { notify, daysUntilDue, minsSinceNag, lastNag };
     }
 }

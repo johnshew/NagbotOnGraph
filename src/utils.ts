@@ -33,9 +33,26 @@ function show(item: any) {
     }
 }
 
-if (false) {
-    console.log(logger`log test ${{ foo: 'foo' }} ${ 10 }`);
-    console.log(logger`multiple args test`, new Error('Test'));
+
+export function delay<T>(t: number, value?: T): Promise<T> {
+    return new Promise((resolve) => setTimeout(() => resolve(value), t));
+}
+
+export async function retry<T>(count : number, msDelay : number, callback : () => Promise<T> ) {
+    return new Promise<T>(async (resolve, reject) => {
+        let result : T;
+        for (let i = 0; i<count; i++) {
+            try {
+                result = await callback();
+                return resolve(result);
+            } catch (err) {                
+            }
+            console.log(logger`retry error ${i+1} waiting ${msDelay}`);
+            await delay(msDelay);
+            msDelay *= 2;
+        }
+        return reject('retry failed');
+    });
 }
 
 export function sleep(ms : number) {

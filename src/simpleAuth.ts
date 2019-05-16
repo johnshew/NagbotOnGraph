@@ -15,14 +15,14 @@ export class AuthContext {
     oid: string;
 
     loadFromToken(data: any) {
-        if (!data.access_token || !data.expires_on || !data.id_token || !data.refresh_token || !data.auth_secret) {
+        if (!data.access_token || !data.expires_in || !data.id_token || !data.refresh_token || !data.auth_secret) {
             throw new Error('Missing values for AuthToken');
         }
         this.authKey = data.auth_secret;
         this.accessToken = data.access_token;
         this.idToken = data.id_token;
         this.refreshToken = data.refresh_token;
-        this.expiresOn = new Date(data.expires_on);
+        this.expiresOn = new Date(Date.now() + data['expires_in'] * 1000);
         this.oid = parseJwt(this.idToken).oid;
         return this;
     }
@@ -88,10 +88,10 @@ export class AuthManager extends EventEmitter {
                 var data = await res.json();
                 if (data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
-                    data['expires_on'] = expires.getTime();
-                }
+                } else throw new Error('No expires_in date');
                 data['auth_secret'] = await generateSecretKey();
                 let tokens = new AuthContext().loadFromToken(data);
+                console.log(logger`refreshed token ${tokens.accessToken.substring(0, 20)} now expires ${tokens.expiresOn.toString()}`);
                 await this.setAuthContext(tokens);
                 return resolve(tokens);
             }
@@ -125,10 +125,10 @@ export class AuthManager extends EventEmitter {
     getAuthContextFromAuthKey(authKey: string) { return this.userAuthKeyToTokensMap.get(authKey); }
     getAuthContextFromOid(oid: string) { return [...this.userAuthKeyToTokensMap.values()].find((t) => t.oid == oid); }
 
-    async setAuthContext(context: AuthContext) {
+    async setAuthContext(context: AuthContext, refresh = true) {
         if (isDeepStrictEqual(this.userAuthKeyToTokensMap.get(context.authKey), context)) return;
         this.userAuthKeyToTokensMap.set(context.authKey, context);
-        await this.getAccessToken(context); // forces refresh if needed
+        if (refresh) await this.getAccessToken(context); // forces refresh if needed
         this.emit('refreshed', context);
     }
 
@@ -158,19 +158,18 @@ export class AuthManager extends EventEmitter {
                     body: body
                 });
                 if (res.status !== 200) {
-                    let resBody = '', chunk; while ((chunk = res.body.read()) ? resBody=resBody+chunk: null);
+                    let resBody = '', chunk; while (chunk = res.body.read()) {  resBody+=chunk; }
                     console.error(logger`refresh Token failed`,res.statusText,resBody)
                     return reject(`refresh token for failed with ${res.status} ${res.statusText} for user ${context.oid}`);
                 }
                 var data = await res.json();
-                if (!data['expires_on'] && data['expires_in']) {
+                if (data['expires_in']) {
                     let expires = new Date(Date.now() + data['expires_in'] * 1000);
-                    data['expires_on'] = expires.getTime();
                 } else { throw new Error('no expiration data'); }
                 data['auth_secret'] = context.authKey;
                 let update = new AuthContext().loadFromToken(data);
-                console.log(logger`refreshed token ${update.accessToken.substring(0, 20)} now expires ${update.expiresOn.toString()} in ${data.expires_in} seconds`);
-                await this.setAuthContext(update);
+                console.log(logger`refreshed token ${update.accessToken.substring(0, 20)} now expires ${update.expiresOn.toString()}`);
+                await this.setAuthContext(update,false);
                 return resolve();
             }
             catch (err) {

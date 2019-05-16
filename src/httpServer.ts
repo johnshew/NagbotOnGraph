@@ -15,7 +15,7 @@ export class Server {
         this.server = restify.createServer(<restify.ServerOptions>{ maxParamLength: 1000 });
         configureServer(this.server);
         this.server.listen(port, () => {
-            console.log(`${this.server.name} listening to ${this.server.url}`);
+            console.log(logger`${this.server.name} listening to ${this.server.url}`);
         });
     }
 
