@@ -5,7 +5,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: nagbot
+      app: nagbotdev
   replicas: 1 # tells deployment to run 1 pod matching the template
   template:
     metadata:
