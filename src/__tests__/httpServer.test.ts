@@ -1,39 +1,39 @@
 
 jest.mock('../simpleAuth');
-import { AuthManager, AuthContext } from '../simpleAuth';
+import { AuthContext, AuthManager } from '../simpleAuth';
 const AuthManagerMocked = AuthManager as unknown as jest.Mock<AuthManager>;
 AuthManagerMocked.mockImplementation((...args: any) => {
     return {
-        getAccessToken: jest.fn<string, any>().mockImplementation(() => { return '' }),
-        getAccessTokenFromAuthKey: jest.fn<string, any>().mockImplementation(() => { return '' }),
-        getAuthContextFromAuthKey: jest.fn<AuthContext, any>().mockImplementation(() => { return null }),
+        getAccessToken: jest.fn<string, any>().mockImplementation(() => ''),
+        getAccessTokenFromAuthKey: jest.fn<string, any>().mockImplementation(() => ''),
+        getAuthContextFromAuthKey: jest.fn<AuthContext, any>().mockImplementation(() => null),
     } as unknown as AuthManager; // since not complete
 });
 
 jest.mock('../nagbotApp');
 import { App } from '../nagbotApp';
-const AppMocked = <jest.Mock<App>>App;
+const AppMocked = App as jest.Mock<App>;
 AppMocked.mockImplementation((...args: any) => {
-    let app: App;
+    const app: App = null;
     return {
-        ready: Promise.resolve({} as App),
         appHttpServer: undefined as unknown as typeof app.appHttpServer,
-        authManager: new AuthManager('x','y','z'),
+        authManager: new AuthManager('x', 'y', 'z'),
         botService: undefined as unknown as typeof app.botService,
         conversationManager: undefined as unknown as typeof app.conversationManager,
-        users: undefined as unknown as typeof app.users,
         graph: undefined as unknown as typeof app.graph,
+        ready: Promise.resolve({} as App),
         timer: undefined as unknown as typeof app.timer,
+        users: undefined as unknown as typeof app.users,
 
+        close: jest.fn<Promise<void>, any>().mockResolvedValue(),
         start: jest.fn<Promise<App>, any>().mockResolvedValue(undefined as unknown as App),
-        close: jest.fn<Promise<void>, any>().mockResolvedValue()
     };
 });
 
-import { Server } from '../httpServer';
 import { default as fetch } from 'node-fetch';
+import { Server } from '../httpServer';
 
-describe("Http Server", () => {
+describe('Http Server', () => {
     let server: Server;
 
     beforeAll(async (done) => {
@@ -41,8 +41,8 @@ describe("Http Server", () => {
         done();
     });
 
-    test("loads app.html", async (done) => {
-        let response = await fetch('http://localhost:8080');
+    test('loads app.html', async (done) => {
+        const response = await fetch('http://localhost:8080');
         expect(response.status).toBe(200);
         expect(response.url).toBe('http://localhost:8080/public/app.html');
         done();

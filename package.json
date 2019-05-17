@@ -8,7 +8,7 @@
     "start": "tsc && node ./lib/app.js",
     "test": "jest --coverage --detectOpenHandles",
     "watch": "concurrently --kill-others \"tsc -w\" \"nodemon --inspect ./lib/app.js\"",
-    "lint": "eslint . --ext .ts"
+    "lint": "tslint -q -p . -c tslint.json"
   },
   "author": "Microsoft",
   "license": "MIT",

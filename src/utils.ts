@@ -3,9 +3,9 @@
 // "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"
 
 export function logger(literals: TemplateStringsArray, ...items: any[]) {
-    let result = new Date(Date.now()).toISOString() + " " + literals[0]
+    let result = new Date(Date.now()).toISOString() + ' ' + literals[0];
     for (let i = 0; i < items.length; i++) {
-        let item = items[i];
+        const item = items[i];
         result += show(item);
         result += literals[i + 1];
     }
@@ -27,12 +27,11 @@ function show(item: any) {
             return `[${item.toString().subst}]`;
             break;
         default:
-            if (typeof item.toString == 'function') return item.toString();
+            if (typeof item.toString === 'function') { return item.toString(); }
             return `[${typeof item} ${JSON.stringify(item).substring(0, 20)}]`;
             break;
     }
 }
-
 
 export function delay<T>(t: number, value?: T): Promise<T> {
     return new Promise((resolve) => setTimeout(() => resolve(value), t));
@@ -41,11 +40,11 @@ export function delay<T>(t: number, value?: T): Promise<T> {
 export async function retry<T>(count: number, msDelay: number, callback: () => Promise<T>) {
     for (let i = 0; i < count; i++) {
         try {
-            let result = await callback();
+            const result = await callback();
             return result;
         } catch (err) {
+            console.log(logger`retry ${i + 1} waiting ${msDelay}`);
         }
-        console.log(logger`retry ${i + 1} waiting ${msDelay}`);
         await delay(msDelay);
         msDelay *= 2;
     }
@@ -53,5 +52,5 @@ export async function retry<T>(count: number, msDelay: number, callback: () => P
 }
 
 export function sleep(ms: number) {
-    return new Promise<void>(resolve => setTimeout(resolve, ms));
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }

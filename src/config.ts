@@ -12,9 +12,9 @@ export class AppConfig {
     public static readonly appPassword = process.env.appPassword;
     public static readonly mongoConnection = process.env.mongoConnection;
     public static readonly httpLocalServerPort = process.env.port || process.env.PORT || '8080';
-    public static readonly publicServer = new URL("https://nagbotdev.shew.net");
+    public static readonly publicServer = new URL('https://nagbotdev.shew.net');
     public static readonly authPath = '/auth';
-    public static readonly authUrl = new URL(AppConfig.authPath, AppConfig.publicServer); 
+    public static readonly authUrl = new URL(AppConfig.authPath, AppConfig.publicServer);
     public static readonly botLoginPath = '/bot-login';
     public static readonly botLoginUrl = new URL(AppConfig.botLoginPath, AppConfig.publicServer).href;
     public static readonly authDefaultScopes = ['openid', 'offline_access', 'profile', 'Mail.Read', 'Tasks.ReadWrite', 'User.ReadWrite'];
@@ -23,9 +23,9 @@ export class AppConfig {
     public static readonly luisKey = process.env.luisKey;
     public static readonly luisStaging = false;
     public static readonly notificationCheckFrequencyMs = (NODE_ENV.toLowerCase().includes('development') ? 2 : 10) /* minutes */ * 60 * 1000;
-    public static readonly dueTodayPolicyIntervalMin = (NODE_ENV.toLowerCase().includes('development') ? 1 : 60); /* minutes */ 
+    public static readonly dueTodayPolicyIntervalMin = (NODE_ENV.toLowerCase().includes('development') ? 1 : 60); /* minutes */
 
-    public static check() : boolean {
+    public static check(): boolean {
         return AppConfig.appId && AppConfig.appPassword && AppConfig.mongoConnection && AppConfig.luisId && true;
     }
 }
