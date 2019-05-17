@@ -1,34 +1,34 @@
-import { ConversationReference } from 'botbuilder';
-import { EventEmitter } from 'events';
+import { ConversationReference } from "botbuilder";
+import { EventEmitter } from "events";
 
-export interface Conversation extends Partial<ConversationReference> {
-    nagEnabled? : boolean
+export interface IConversation extends Partial<ConversationReference> {
+    nagEnabled?: boolean
 }
 
 export class ConversationManager extends EventEmitter {
 
-    private conversationsByUser = new Map<string, Conversation[]>(); // all known conversations associated with a user (oid) 
-    private unauthenticatedConversationsByTempKey = new Map<string, Conversation>();  // all conversations not associated with a user (oid) indexed by their tempKey
+    private conversationsByUser = new Map<string, IConversation[]>(); // all known conversations associated with a user (oid) 
+    private unauthenticatedConversationsByTempKey = new Map<string, IConversation>();  // all conversations not associated with a user (oid) indexed by their tempKey
 
     constructor() { super(); }
 
-    findAll(oid: string): Conversation[] {
+    findAll(oid: string): IConversation[] {
         let conversations = this.conversationsByUser.get(oid);
         return conversations || [];
     }
 
-    find(oid: string, predicate: (value: Conversation, index: number, obj: Conversation[]) => boolean) {
+    find(oid: string, predicate: (value: IConversation, index: number, obj: IConversation[]) => boolean) {
         let conversations = this.conversationsByUser.get(oid);
         return conversations.find(predicate)
     }
 
     initializeConversations(oid: string) {
-        let conversations = [] as Conversation[];
+        let conversations = [] as IConversation[];
         this.conversationsByUser.set(oid, conversations);
         return conversations;
     }
 
-    upsert(oid: string, conversation: Conversation) {
+    upsert(oid: string, conversation: IConversation) {
         if (!oid) throw 'oid cannot be null';
         let conversations = this.conversationsByUser.get(oid);
         if (!conversations) { conversations = this.initializeConversations(oid); }
@@ -43,7 +43,7 @@ export class ConversationManager extends EventEmitter {
         return;
     }
 
-    delete(oid: string, conversation: Conversation) {
+    delete(oid: string, conversation: IConversation) {
         if (!oid) throw 'oid cannot be null';
         let conversations = this.conversationsByUser.get(oid);
         if (!conversations) { return; } // doesn't exist so consider it deleted
@@ -53,7 +53,7 @@ export class ConversationManager extends EventEmitter {
         return;
     }
 
-    load(oid: string, conversations: Conversation[]) {
+    load(oid: string, conversations: IConversation[]) {
         this.conversationsByUser.set(oid, conversations); // does not fire updated events
     }
 
@@ -62,7 +62,7 @@ export class ConversationManager extends EventEmitter {
         this.emit("updated", oid, null, this);
     }
 
-    addUnauthenticatedConversation(tempKey: string, conversation: Conversation) {
+    addUnauthenticatedConversation(tempKey: string, conversation: IConversation) {
         if (!tempKey) throw 'tempKey can not be null';
         this.unauthenticatedConversationsByTempKey.set(tempKey, conversation);
     }
@@ -77,11 +77,11 @@ export class ConversationManager extends EventEmitter {
 }
 
 export declare interface ConversationManager {
-    on(event: 'updated', listener: (oid: string, conversation: Conversation, thisArg: ConversationManager) => void): this;
-    emit(event: 'updated', oid: string, conversation: Conversation, thisArg: ConversationManager): boolean
+    on(event: 'updated', listener: (oid: string, conversation: IConversation, thisArg: ConversationManager) => void): this;
+    emit(event: 'updated', oid: string, conversation: IConversation, thisArg: ConversationManager): boolean
 }
 
-export function compare(l: Conversation, r: Conversation): boolean {
+export function compare(l: IConversation, r: IConversation): boolean {
     let result = (l.serviceUrl === r.serviceUrl) && (l.channelId === r.channelId) && (l.conversation.id === r.conversation.id)
     return result;
 }

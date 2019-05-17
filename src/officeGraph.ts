@@ -1,8 +1,8 @@
-import { default as fetch } from 'node-fetch';
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+import { default as fetch } from 'node-fetch';
+import { IConversation } from './conversations';
+import { logger, sleep } from './utils';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
-import { Conversation } from './conversations';
-import { logger, retry, sleep } from './utils';
 
 export class OfficeGraph {
 
@@ -114,7 +114,7 @@ export class OfficeGraph {
 
 
 
-    async setConversations(accessToken: string, conversations: Conversation[]) {
+    async setConversations(accessToken: string, conversations: IConversation[]) {
         try {
             let data = { id: 'net.shew.nagger', conversations };
             await this.patch(accessToken, `${this.graphUrl}/me/extensions/net.shew.nagger`, data);
@@ -132,10 +132,10 @@ export class OfficeGraph {
     }
 
     async getConversations(accessToken: string) {
-        let data = await this.getWithRetry(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
+        let data = await this.getWithRetry<IConversation>(accessToken, 'https://graph.microsoft.com/v1.0/me/extensions/net.shew.nagger')
             .catch((reason) => Promise.resolve(null));
         let conversations: any[] = data && data.conversations || [];
-        return <Conversation[]>conversations;
+        return conversations;
     }
 
     async findTasks(token: string): Promise<OutlookTask[]> {

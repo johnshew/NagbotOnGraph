@@ -43,6 +43,11 @@
             "problemMatcher": [
                 "$tsc"
             ]
+        },
+        {
+            "type": "npm",
+            "script": "lint",
+            "problemMatcher": []
         }
     ]
 }
