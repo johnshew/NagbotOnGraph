@@ -27,15 +27,20 @@ We also leverage Azure Montioring for cluster health monitoring and alerting.
 
 ## Getting started
 
-Use `git` to clone this respository.
+To get started you will need to have:
+* A bot configured on Azure
+* A LUIS app and model for NLP
+* A Mongo database
 
-```Shell
-git clone 
-```
+With this in place:
+* Create a .env file containing important keys the application will use
+* Start the application and run it locally
+
+These steps are covered here a bit more detail.
 
 ### Configure the Bot and LUIS services
 
-Instructions on creating a bot and luis applications are here:
+Instructions on creating a bot and luis applications are here:  `!!! TODO`
 
 You will need to config your Bot enpoints to support the API and login directs.
 
@@ -43,7 +48,7 @@ For the login redirects you will neet to add http://localhost:8080 to test local
 
 For the bot API you will need to configure it to http://localhost:3978 to test locally.
 
-### Start a Mongo DB instance
+### Instantiate a Mongo database
 
 For testing locally it is very easy to configure a mongodb container and run it on docker.  No special setup needs to be done and the app will create the database on starup.
 
@@ -61,9 +66,9 @@ luisId={ LUIS app id }
 luisKey={ LUIS }
 ```
 
-### Running the app
+### Run the app
 
-With the preliminaries about out of the way you should be able to the app
+With the preliminaries about out of the way you should be able to run the app
 
 ```Shell
 npm start
@@ -71,13 +76,24 @@ npm start
 
 The app will listen on http://localhost:8080.
 
-## Kubernetes deployment 
+
+# Deploying and running the application on Kubernetes 
 
 For deployment to Kubernetes you can use the `deploy/kubeDeploy` directory.  
 
 Also in the `deploy/` directory you will find a `fluxDeploy/` to enable git ops and various optional scripts to config the Kubernetes environment.
 
 To use the gitops approach you will need to add a flux deployment key to your github repository.  See teh `deploy-gitops.sh` script for the details.
+
+# Contributions
+
+We welcome contributions but response time will be very slow.
+
+See the [Contributor Guide](./.github/contibuting.md)
+
+# Code of Conduct
+
+See the [Code of Conduct Guide](./.github/CODE_OF_CONDUCT.md)
 
 # Additional notes
 
