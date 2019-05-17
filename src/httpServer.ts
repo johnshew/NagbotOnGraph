@@ -7,6 +7,7 @@ import { OutlookTask, OpenTypeExtension } from '@microsoft/microsoft-graph-types
 import { notifyUser } from './notifications';
 import { User } from './users';
 import { logger } from './utils';
+import { RequestCounters, addMetricsAPI, addResponseMetrics } from './prometheus';
 
 export class Server {
     server: restify.Server;
@@ -48,6 +49,10 @@ function configureServer(httpServer: restify.Server) {
         console.log(logger`Request for ${req.url} `);
         next();
     });
+
+    httpServer.use(RequestCounters);
+    addResponseMetrics(httpServer);
+    addMetricsAPI(httpServer)
 
     //// Static pages
 
