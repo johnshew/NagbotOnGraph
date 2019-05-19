@@ -78,7 +78,7 @@ function evaluateNotificationPolicy(task: OutlookTask): INagPolicyEvaluationResu
         default:
             // once per hour on day of nag or overdue otherwise once per day
             const dueOrOverdue = daysUntilDue < 1;
-            const doNotify = ((dueOrOverdue && minsSinceNag > AppConfig.dueTodayPolicyIntervalMin) || (!dueOrOverdue && minsSinceNag > 24 * 60));
+            const doNotify = ((dueOrOverdue && minsSinceNag > AppConfig.dueTodayPolicyIntervalMins) || (!dueOrOverdue && minsSinceNag > 24 * 60));
             return { notify: doNotify, daysUntilDue, minsSinceNag, lastNag };
     }
 }

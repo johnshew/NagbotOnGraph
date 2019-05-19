@@ -1,4 +1,8 @@
-# MV2 Consider
+# Bugs to report
+* Need @types/continuation-local-storage and @types/express for jaeger-tracer
+* Docs on K8 monitoring are bad
+
+# M2 Consider
 * For the URL - consider having a TTL buffer and use shorter URLs.   Make it easier for sms channel.  
 * Do we want an SMS channel - probably better to nag directly using MMS.
 * P3 - Bug: if a channel doesn't work - then remove it - longer term wait for a period of time.

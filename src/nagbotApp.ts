@@ -70,7 +70,7 @@ export class App {
                 } catch (err) {
                     console.log(logger`error in notifications timer`, err);
                 }
-            }, AppConfig.notificationCheckFrequencyMs);
+            }, AppConfig.notificationCheckFrequencyMins * 60 * 1000);
             console.log(logger`app started`);
             return this;
         } catch (err) {

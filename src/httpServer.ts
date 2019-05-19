@@ -1,13 +1,18 @@
-import * as http from 'http';
-import * as restify from 'restify';
-
 import { OpenTypeExtension, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
+import * as http from 'http';
+import { spanMaker } from 'jaeger-tracer-restify';
+import { FORMAT_HTTP_HEADERS, Tags } from 'opentracing';
+import { initTracer } from 'jaeger-tracer-restify';
+import * as restify from 'restify';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
+import { getContext as traceContext } from './jeager';
 import { app, AppConfig } from './nagbotApp';
 import { notifyUser } from './notifications';
 import { addMetricsAPI, addResponseMetrics, RequestCounters } from './prometheus';
 import { User } from './users';
 import { logger } from './utils';
+
+const tracer = initTracer('nagbotapp', { reporter: { agentHost: 'localhost' } });
 
 export class Server {
     public server: restify.Server;
@@ -46,13 +51,95 @@ function configureServer(httpServer: restify.Server) {
     httpServer.use(restify.plugins.queryParser());
 
     httpServer.use((req, res, next) => {
-        console.log(logger`Request for ${req.url} `);
-        next();
+        traceContext().run(() => {
+            console.log(logger`Request for ${req.url} `);
+            traceContext().set('tracer', tracer);
+            let parentSpanContext = tracer.extract(FORMAT_HTTP_HEADERS, req.headers);
+            let span = spanMaker(req.path(), parentSpanContext, tracer)
+            span.setTag(Tags.HTTP_URL, req.path());
+            span.setTag(Tags.HTTP_METHOD, req.method);
+            span.setTag('Hostname', req.headers.host);
+            span.log({
+                event: 'request',
+                body: req.body,
+                params: req.params,
+                query: req.query,
+                headers: req.headers
+            });
+            let responseSpanLogEntry: any = { event: 'response' };
+            res.once('error', (res: restify.Response, err: Error) => {
+                console.log(logger`response error`);
+                span.log({
+                    event: 'response',
+                    status: 'error',
+                    error: err,
+                    headers: res && res.getHeaders ? res.getHeaders() : {}, // work with both express ???
+                    statusCode: res && res.statusCode || 'no status found',
+                });
+                span.finish();
+                console.log(logger`res error span finished`);
+                
+            });
+            res.once('finish', (res: restify.Response) => {
+                span.log({
+                    ...responseSpanLogEntry,
+                    headers: res && res.getHeaders ? res.getHeaders() : {},
+                    statusCode: res && res.statusCode || 'no status code found',
+                    statusMessage: res && res.statusMessage || 'no message found',
+                    // json_hook below will pick up the body.
+                });
+                span.finish();
+                console.log(logger`response finish span finished`);
+                
+            });
+            traceContext().bindEmitter(req);
+            traceContext().bindEmitter(res);
+            traceContext().set('main-span', span);
+            traceContext().run(() => {
+                // hook response.json to capture body
+                let response_json = res.json;
+
+                function json_hook(json: any) {
+                    console.log(logger`intercept json hook called`);
+                    let originalJson = json;
+                    res.json = response_json;
+                    if (res.headersSent) {
+                        console.log(logger`headers have been sent`);
+                        return originalJson;
+                    }
+
+                    try {
+                        responseSpanLogEntry = {
+                            ...responseSpanLogEntry,
+                            status: 'normal',
+                            body: json
+                        }
+                        console.log(logger`responseSpanLogEntry`, responseSpanLogEntry)
+                    } catch (e) {
+                        return originalJson;
+                    }
+
+                    // If no returned value from fn, then assume json has been mucked with.
+                    if (json === undefined || json === null) {
+                        json = originalJson;
+                        return originalJson;
+                    }
+                    console.log(logger`calling actual response.json`);
+                    return response_json.call(this, json);
+                }
+
+                res.json = json_hook;
+                //!TODO: need to hook http, https
+
+                next();
+            });
+        });
     });
 
     httpServer.use(RequestCounters);
     addResponseMetrics(httpServer);
     addMetricsAPI(httpServer);
+
 
     //// Static pages
 
@@ -407,4 +494,39 @@ function getCookie(req: restify.Request, key: string): string {
     }
 
     return (key && key in list) ? list[key] : null;
+}
+
+function interceptJson(fn: (json: any, req: restify.Request, res: restify.Response) => any, options: any = {}) {
+    console.log(logger`setting up response.json intercept`);
+    return function (req: restify.Request, res: restify.Response, next: restify.Next) {
+        let response_json = res.json;
+
+        function json_hook(json: any) {
+            console.log(logger`intercept json hook called`);
+            let originalJson = json;
+            res.json = response_json;
+            if (res.headersSent) {
+                console.log(logger`headers have been sent`);
+                return originalJson;
+            }
+
+            try {
+                json = fn(json, req, res);
+            } catch (e) {
+                return originalJson;
+            }
+
+            // If no returned value from fn, then assume json has been mucked with.
+            if (json === undefined || json === null) {
+                json = originalJson;
+                return originalJson;
+            }
+            console.log(logger`calling actual response.json`);
+            return response_json.call(this, json);
+        }
+
+        res.json = json_hook;
+
+        next && next();
+    }
 }
