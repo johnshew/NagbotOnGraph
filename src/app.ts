@@ -2,7 +2,6 @@
 import { app, create } from './nagbotApp';
 import { startCollection } from './prometheus';
 
-
 startCollection();
 create();
 

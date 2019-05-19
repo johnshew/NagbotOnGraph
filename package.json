@@ -19,11 +19,10 @@
     "botframework-config": "^4.3.4",
     "global-tunnel-ng": "^2.7.1",
     "jaeger-tracer-restify": "git+https://github.com/johnshew/jaeger-tracer-restify.git",
-    "mongodb": "^3.2.3",
+    "mongodb": "^3.2.5",
     "node-fetch": "^2.6.0",
     "prom-client": "^11.3.0",
-    "restify": "^8.3.2",
-    "ts-jest": "^24.0.2"
+    "restify": "^8.3.2"
   },
   "devDependencies": {
     "@microsoft/microsoft-graph-types": "^1.8.0",
@@ -31,14 +30,15 @@
     "@microsoft/recognizers-text-date-time": "^1.1.4",
     "@types/continuation-local-storage": "^3.2.1",
     "@types/dotenv": "^6.1.1",
-    "@types/jest": "^24.0.12",
+    "@types/jest": "^24.0.13",
     "@types/mongodb": "^3.1.24",
-    "@types/node-fetch": "^2.3.2",
-    "@types/restify": "^7.2.9",
+    "@types/node-fetch": "^2.3.4",
+    "@types/restify": "^7.2.10",
     "concurrently": "^4.0.1",
     "dotenv": "^8.0.0",
     "jest": "^24.8.0",
-    "nodemon": "^1.18.11",
+    "nodemon": "^1.19.0",
+    "ts-jest": "^24.0.2",
     "tslint": "^5.16.0",
     "typescript": "^3.4.5"
   },

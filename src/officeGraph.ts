@@ -46,7 +46,7 @@ export class OfficeGraph {
     }
 
     public async getWithRetry<T>(accessToken: string, url: string, count = 5, delayMs = 1000): Promise<T> {
-        console.log(logger`GET retry called`);
+        console.log(logger`GET with retry starting`);
         let error;
         for (let i = 0; i < count; i++) {
             try {
