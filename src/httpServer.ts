@@ -1,18 +1,20 @@
 import { OpenTypeExtension, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
 import * as http from 'http';
-import { spanMaker } from 'jaeger-tracer-restify';
-import { initTracer } from 'jaeger-tracer-restify';
+import * as https from 'https';
+import * as jaeger from 'jaeger-tracer-restify';
+import { jaegerTracer } from './jaeger'
+
 import { FORMAT_HTTP_HEADERS, Tags } from 'opentracing';
 import * as restify from 'restify';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
-import { getContext as traceContext } from './jeager';
 import { app, AppConfig } from './nagbotApp';
 import { notifyUser } from './notifications';
 import { addMetricsAPI, addResponseMetrics, RequestCounters } from './prometheus';
 import { User } from './users';
 import { logger } from './utils';
 
-const tracer = initTracer('nagbotapp', { reporter: { agentHost: 'localhost' } });
+const tracer = jaegerTracer;
+const requestOriginal = { http: http.request, https: https.request };
 
 export class Server {
     public server: restify.Server;
@@ -51,11 +53,11 @@ function configureServer(httpServer: restify.Server) {
     httpServer.use(restify.plugins.queryParser());
 
     httpServer.use((req, res, next) => {
-        traceContext().run(() => {
+        jaeger.getContext().run(() => {
             console.log(logger`Request for ${req.url} `);
-            traceContext().set('tracer', tracer);
+            jaeger.getContext().set('tracer', tracer);
             const parentSpanContext = tracer.extract(FORMAT_HTTP_HEADERS, req.headers);
-            const span = spanMaker(req.path(), parentSpanContext, tracer);
+            const span = jaeger.startSpan(req.path(), parentSpanContext, tracer);
             span.setTag(Tags.HTTP_URL, req.path());
             span.setTag(Tags.HTTP_METHOD, req.method);
             span.setTag('Hostname', req.headers.host);
@@ -92,14 +94,14 @@ function configureServer(httpServer: restify.Server) {
                 console.log(logger`response finish span finished`);
 
             });
-            traceContext().bindEmitter(req);
-            traceContext().bindEmitter(res);
-            traceContext().set('main-span', span);
-            traceContext().run(() => {
+            jaeger.getContext().bindEmitter(req);
+            jaeger.getContext().bindEmitter(res);
+            jaeger.getContext().set('main-span', span);
+            jaeger.getContext().run(() => {
                 // hook response.json to capture body
                 const jsonFunctionOnResponseObject = res.json;
 
-                function json_hook(...args : any[])
+                function json_hook(...args: any[])
                 //!TODO this assumes one argument - is restify this can be 3 args long
                 {
                     const json = (args.length < 2) ? args[0] : args[1];
@@ -110,12 +112,11 @@ function configureServer(httpServer: restify.Server) {
                         console.log(logger`headers have been sent`);
                         return originalJsonValue;
                     }
-
                     try {
                         responseSpanLogEntry = {
                             ...responseSpanLogEntry,
                             status: 'normal',
-                            body: json,
+                            body: '<response json called>',
                         };
                         console.log(logger`responseSpanLogEntry`, responseSpanLogEntry);
                     } catch (e) {
@@ -133,7 +134,18 @@ function configureServer(httpServer: restify.Server) {
                 res.json = json_hook;
 
                 // !TODO: need to hook http, https
-
+                function wrappedHttpRequest(...args: any[]): http.ClientRequest {
+                    console.log(logger`wrapped http request`);
+                    if (args.length < 1) throw new Error('wrapped http.request requires 1 or more args');
+                    let headers: any = {};
+                    tracer.inject(span, FORMAT_HTTP_HEADERS, headers);
+                    if (args[0] && args[0]['headers']) {
+                        args[0]['headers'] = { ...args[0]['headers'] || {}, ...headers || {} };
+                    }
+                    let foo: any = args;
+                    return requestOriginal.http(args[0], args[1], args[2]);
+                }
+                (http as any).request = wrappedHttpRequest;
                 next();
             });
         });
@@ -299,7 +311,7 @@ function configureServer(httpServer: restify.Server) {
         try {
             const accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
             const conversations = await app.graph.getConversations(accessToken);
-            res.json(200,conversations);
+            res.json(200, conversations);
             res.end();
             return next();
         } catch (err) {
@@ -471,7 +483,7 @@ async function graphPatch(req: restify.Request, res: restify.Response, next: res
         const accessToken = await app.authManager.getAccessTokenFromAuthKey(getCookie(req, 'userId'));
         const result = await app.graph.patch(accessToken, url, data);
         res.status(200);
-        res.json( result);
+        res.json(result);
         res.end();
         return next();
     } catch (err) {

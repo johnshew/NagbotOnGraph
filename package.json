@@ -18,7 +18,7 @@
     "botbuilder-ai": "^4.3.4",
     "botframework-config": "^4.3.4",
     "global-tunnel-ng": "^2.7.1",
-    "jaeger-tracer-restify": "git+https://github.com/johnshew/jaeger-tracer-restify.git",
+    "jaeger-tracer-restify": "^1.0.1",
     "mongodb": "^3.2.5",
     "node-fetch": "^2.6.0",
     "prom-client": "^11.3.0",

@@ -1,8 +1,17 @@
 import { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
-import { default as fetch } from 'node-fetch';
+import { default as fetchOriginal } from 'node-fetch';
+import { getInjectHeaders } from 'jaeger-tracer-restify'
 import { IConversation } from './conversations';
 import { logger, sleep } from './utils';
 export { OutlookTask, User } from '@microsoft/microsoft-graph-types-beta';
+
+let fetch = (url: string, init?: any) => {
+    let newHeaders = getInjectHeaders();
+    if (typeof init === 'object') {
+        init.headers = { ...(init.headers ? init.headers : {}), ...newHeaders };
+    }
+    return fetchOriginal(url, init);
+}
 
 export class OfficeGraph {
 
