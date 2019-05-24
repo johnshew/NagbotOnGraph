@@ -57,3 +57,9 @@ export GRAFANA_POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafan
 cd ../../..
 #cleanup charts directory cloned by script.
 rm -rf charts
+#apply ***DEV*** jaeger yml (TODO: Establish variance with published helm chart)
+
+kubectl create -f ./kube-jaeger-dev.yml
+
+#export jaeger query service IP to env var
+export JAEGER_SERVICE_IP=$(kubectl get services --namespace tracing -l "app.kubernetes.io/query" -o jsonpath="{.items[0].spec.clusterIP}")
