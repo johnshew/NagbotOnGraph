@@ -52,7 +52,7 @@ rm -rf charts
 kubectl create -f ./kube-jaeger-dev.yml
 
 echo "Waiting $SpinupWait seconds for all resources to be ready and running."
-sleep 60
+sleep $SpinupWait
 #export name of the current prometheus pod to env var 'PROMETHEUS_POD_NAME'
 #to proxy to local machine for access use: 
 #kubectl --namespace monitoring port-forward $PROMETHEUS_POD_NAME 9090
