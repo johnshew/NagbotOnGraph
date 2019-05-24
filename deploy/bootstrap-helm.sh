@@ -5,10 +5,10 @@ version=1.0
 echo "Nagbot Telemetry Bootstrap: $version"
 
 #config values
-export RgName=jttelemdev
-export ClusterName=telemcluster1
+export RgName=myuniquerg
+export ClusterName=myuniquecluster
 export NodeCount=1
-export MonitoringNamespace
+export MonitoringNamespace=monitoring
 
 echo cluster-name
 
