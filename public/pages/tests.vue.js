@@ -10,6 +10,7 @@ var spaTests = Vue.component("Tasks", {
         <li><a href='/test-profile'>profile</a> </li>
         <li><a href='/test-update'>update profile</a></li>
         <li><a href='/test-notify'>use bots to notify</a></li>
+        <li><a href='/metrics'>metrics</a></li>
     </ul>
     <p></p>
     <p>To manage app permissions go to <a href='https://myapps.microsoft.com'>https://myapps.microsoft.com</a></p>

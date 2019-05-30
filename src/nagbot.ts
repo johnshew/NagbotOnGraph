@@ -1,42 +1,41 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import { app, AppConfig } from './nagbotApp';
-import { ActionTypes, Storage, ActivityTypes, BotAdapter, CardFactory, ConversationReference, TurnContext, ConversationState, UserState, StatePropertyAccessor, MessageFactory, InputHints, RecognizerResult } from 'botbuilder';
+import { ActionTypes, ActivityTypes, BotAdapter, CardFactory, ConversationReference, ConversationState, InputHints, MessageFactory, RecognizerResult, StatePropertyAccessor, Storage, TurnContext, UserState } from 'botbuilder';
+import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai';
 import { ConversationManager } from './conversations';
-import { User } from './users';
-import { LuisApplication, LuisPredictionOptions, LuisRecognizer } from 'botbuilder-ai'
+import { app, AppConfig } from './nagbotApp';
 import { OutlookTask } from './officeGraph';
 import { generateSecretKey } from './simpleAuth';
+import { User } from './users';
 
 // import { BaseDateTimeExtractor } from '@microsoft/recognizers-text-date-time'
 
-
-type LuisIntents = "None"
-    | "Channels_Clear"
-    | "Channels_List"
-    | "None"
-    | "Notification_Off"
-    | "Notification_On"
-    | "Reminder_Change"
-    | "Reminder_Create"
-    | "Reminder_Delete"
-    | "Reminder_Find"
-    | "Reminder.Location"
-    | "Timezone_Adust"
-    | "Timezone_Query"
-    | "Utilities_Help"
-    | "Yes"
-    | "No"
-    | "Entity"
+type LuisIntents = 'None'
+    | 'Channels_Clear'
+    | 'Channels_List'
+    | 'None'
+    | 'Notification_Off'
+    | 'Notification_On'
+    | 'Reminder_Change'
+    | 'Reminder_Create'
+    | 'Reminder_Delete'
+    | 'Reminder_Find'
+    | 'Reminder.Location'
+    | 'Timezone_Adust'
+    | 'Timezone_Query'
+    | 'Utilities_Help'
+    | 'Yes'
+    | 'No'
+    | 'Entity'
     ;
 
 class ConversationStatus {
-    oid: string = null;
-    tempVerficationKey: string = null;
+    public oid: string = null;
+    public tempVerficationKey: string = null;
 }
 
-export interface NagBotConfig {
+export interface INagBotConfig {
     store: Storage;
     conversationManager: ConversationManager;
 }
@@ -52,8 +51,8 @@ export class NagBot {
 
     private model: LuisRecognizer;
 
-    constructor(config: NagBotConfig) {
-        if (!config || !config.store || !config.conversationManager) throw 'Missing config members needed for NagBot constructor';
+    constructor(config: INagBotConfig) {
+        if (!config || !config.store || !config.conversationManager) { throw new Error('Missing config members needed for NagBot constructor'); }
         this.store = config.store;
         this.conversationManager = config.conversationManager;
 
@@ -63,8 +62,8 @@ export class NagBot {
         // Map the contents to the required format for `LuisRecognizer`.
         const luisApplication: LuisApplication = {
             applicationId: AppConfig.luisId,
-            endpointKey: AppConfig.luisKey
-        }
+            endpointKey: AppConfig.luisKey,
+        };
 
         // Create configuration for LuisRecognizer's runtime behavior.
         const luisPredictionOptions: LuisPredictionOptions = {
@@ -72,7 +71,7 @@ export class NagBot {
             log: true,
             staging: AppConfig.luisStaging,
             // timezoneOffset: 0
-        }
+        };
         this.model = new LuisRecognizer(luisApplication, luisPredictionOptions);
 
         // Create the state property accessors for the conversation data and user profile.
@@ -87,21 +86,21 @@ export class NagBot {
      * @param turnContext A TurnContext instance, containing all the data needed for processing the conversation turn.
      */
 
-    async onTurn(turnContext: TurnContext) {
+    public async onTurn(turnContext: TurnContext) {
         // By checking the incoming Activity type, the bot only calls LUIS in appropriate cases.
-        console.log(`onTurn started`);
+        console.log('onTurn started');
         const activity = turnContext.activity;
-        let user = await this.userAccessor.get(turnContext, {});
-        let conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
+        const user = await this.userAccessor.get(turnContext, {});
+        const conversation = await this.conversationAccessor.get(turnContext) || new ConversationStatus();
 
         switch (turnContext.activity.type) {
             case ActivityTypes.Message:
                 switch (activity.text.toLowerCase().trim()) {
                     case 'login':
-                        if (!('getUserToken' in turnContext.adapter)) throw new Error(`OAuthPrompt.prompt(): not supported for the current adapter.`);
+                        if (!('getUserToken' in turnContext.adapter)) { throw new Error('OAuthPrompt.prompt(): not supported for the current adapter.'); }
                         // Check to ensure channel supports it
-                        let message = MessageFactory.text('Office 365 Login', undefined, InputHints.ExpectingInput);
-                        let oauthCardAttachment = CardFactory.oauthCard("AAD-OAUTH", 'title', 'text');
+                        const message = MessageFactory.text('Office 365 Login', undefined, InputHints.ExpectingInput);
+                        const oauthCardAttachment = CardFactory.oauthCard('AAD-OAUTH', 'title', 'text');
                         message.attachments = [oauthCardAttachment];
                         console.log(`Attachment: ${JSON.stringify(oauthCardAttachment, null, 2)}`);
                         await turnContext.sendActivity(message);
@@ -122,9 +121,9 @@ export class NagBot {
                         // await this.conversationAccessor.set(turnContext, conversation);
                         // await this.conversationState.saveChanges(turnContext);
 
-                        let signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${AppConfig.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
+                        const signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${AppConfig.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
 
-                        if (turnContext.activity.channelId == 'msteams') {
+                        if (turnContext.activity.channelId === 'msteams') {
                             // hack to fix teams.
                             signinCardAttachment.content.buttons[0].type = ActionTypes.OpenUrl;
                         }
@@ -146,10 +145,10 @@ export class NagBot {
 
             case ActivityTypes.Event:
                 // TODO Handle OauthCard as login.
-                if (activity.name && activity.name === "tokens/response" && activity.value.token) {
+                if (activity.name && activity.name === 'tokens/response' && activity.value.token) {
                     await turnContext.sendActivity('Got a token');
-                    let token = activity.value.token;
-                    let result = app.graph.get(token, 'https://graph.microsoft.com/v1.0/me/');
+                    const token = activity.value.token;
+                    const result = app.graph.get(token, 'https://graph.microsoft.com/v1.0/me/');
                     await turnContext.sendActivity(`Result: ${JSON.stringify(result, null, 2)}`);
                 }
                 break;
@@ -160,12 +159,12 @@ export class NagBot {
         }
     }
 
-    async onTurnLuis(turnContext: TurnContext) {
-        let user: User = undefined;
+    public async onTurnLuis(turnContext: TurnContext) {
+        let user: User;
         try {
-            let results = await this.model.recognize(turnContext);
+            const results = await this.model.recognize(turnContext);
             user = await this.userAccessor.get(turnContext, {});
-            const topIntent = <LuisIntents>LuisRecognizer.topIntent(results);
+            const topIntent = LuisRecognizer.topIntent(results) as LuisIntents;
 
             switch (topIntent) {
                 case 'Channels_Clear':
@@ -178,15 +177,16 @@ export class NagBot {
                     break;
                 case 'Reminder_Create':
                     if (user && user.oid) {
-                        const text = results.entities["Reminder_Text"];
-                        const dueEntity = results.entities["datetime"];
-                        let dueDateTime = ProcessDateTimeEntity(dueEntity);
+                        const text = results.entities.Reminder_Text;
+                        const dueEntity = results.entities.datetime;
+                        const dueDateTime = ProcessDateTimeEntity(dueEntity);
                         if (text && dueDateTime) {
-                            let task: OutlookTask = { subject: text, dueDateTime: { timeZone: "PST", dateTime: dueDateTime.toISOString() } };
-                            let accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
-                            let savedTask = await app.graph.insertTask(accessToken, task);
-                            if (savedTask && savedTask.id && savedTask.dueDateTime) await turnContext.sendActivity(`Created new task ${savedTask.subject}
+                            const task: OutlookTask = { subject: text, dueDateTime: { timeZone: 'PST', dateTime: dueDateTime.toISOString() } };
+                            const accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
+                            const savedTask = await app.graph.insertTask(accessToken, task);
+                            if (savedTask && savedTask.id && savedTask.dueDateTime) { await turnContext.sendActivity(`Created new task ${savedTask.subject}
     due ${new Date(savedTask.dueDateTime.dateTime).toString()}`);
+                            }
                         } else {
                             await turnContext.sendActivity('Unable to create reminder - missing subject');
                         }
@@ -196,9 +196,9 @@ export class NagBot {
                     break;
                 case 'Reminder_Find':
                     if (user && user.oid) {
-                        let accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
-                        let tasks = await app.graph.findTasks(accessToken)
-                        let tasksList = tasks.reduce((prev, cur) => {
+                        const accessToken = await app.authManager.getAccessTokenFromOid(user.oid);
+                        const tasks = await app.graph.findTasks(accessToken);
+                        const tasksList = tasks.reduce((prev, cur) => {
                             return prev + ((prev.length > 0) ? ', ' + cur.subject : cur.subject);
                         }, '');
                         await turnContext.sendActivity(`Tasks: (${tasksList})`);
@@ -221,11 +221,11 @@ export class NagBot {
         }
     }
 
-    async getUser(turnContext: TurnContext) {
+    public async getUser(turnContext: TurnContext) {
         return await this.userAccessor.get(turnContext);
     }
 
-    async setUser(turnContext: TurnContext, user: User) {
+    public async setUser(turnContext: TurnContext, user: User) {
         await this.userAccessor.set(turnContext, user);
         await this.userState.saveChanges(turnContext);
     }
@@ -238,17 +238,17 @@ Here a few of the things we can do
 * Create a reminder; e.g. remind me to walk the dog tomorrow noon
 * List reminders: what are my reminders?`;
 
-function ProcessDateTimeEntity(dateEntity: { type: string, timex: string[] }[]) {
+function ProcessDateTimeEntity(dateEntity: Array<{ type: string, timex: string[] }>) {
     // "https://github.com/Microsoft/Recognizers-Text/blob/master/JavaScript/packages/recognizers-date-time/src/dateTime/constants.ts"
     // "https://github.com/Microsoft/Recognizers-Text/blob/master/JavaScript/samples/botbuilder/index.js"
 
-    if (dateEntity.length < 1 && dateEntity[0].type && dateEntity[0].timex.length < 1) return undefined;
+    if (dateEntity.length < 1 && dateEntity[0].type && dateEntity[0].timex.length < 1) { return undefined; }
 
-    var first = dateEntity[0];
-    var type = first.type
-    var firstTimex = first.timex[0];
+    const first = dateEntity[0];
+    const type = first.type;
+    const firstTimex = first.timex[0];
 
-    let date, time;
+    let date; let time;
     if (firstTimex.includes('T')) {
         [date, time] = firstTimex.split('T');
     } else if (firstTimex.includes('-')) {
@@ -256,13 +256,12 @@ function ProcessDateTimeEntity(dateEntity: { type: string, timex: string[] }[]) 
     } else {
         time = firstTimex;
     }
-    if (!time) time = "00:00";
-    if (!date || !date.includes('-')) date = new Date(Date.now()).toISOString().split('T')[0];
-    let [hours, mins] = time.split(':');
-    if (!mins) time += ":00";
-    let dateTime = date + 'T' + time;
-    let result = new Date(date + 'T' + time);
+    if (!time) { time = '00:00'; }
+    if (!date || !date.includes('-')) { date = new Date(Date.now()).toISOString().split('T')[0]; }
+    const [hours, mins] = time.split(':');
+    if (!mins) { time += ':00'; }
+    const dateTime = date + 'T' + time;
+    const result = new Date(date + 'T' + time);
     console.log(`found DateTime ${dateTime} as ${result.toString()}`);
     return result;
 }
-

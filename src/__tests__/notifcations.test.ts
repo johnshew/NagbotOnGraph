@@ -1,6 +1,8 @@
 
-import { notifyUser, notify } from '../notifications';
+import { notify, notifyUser } from '../notifications';
 
-describe("Working", () => {
-    test("Check notifications", async () => { });
+describe('Working', () => {
+    test('Check notifications', async () => {
+        console.log('no test yet');
+     });
 });

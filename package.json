@@ -6,8 +6,10 @@
   "scripts": {
     "build": "tsc",
     "start": "tsc && node ./lib/app.js",
-    "test": "jest --coverage --detectOpenHandles",
-    "watch": "concurrently --kill-others \"tsc -w\" \"nodemon --inspect ./lib/app.js\""
+    "test:unit": "jest --coverage --detectOpenHandles",
+    "test": "npm run lint && npm run test:unit",
+    "watch": "concurrently --kill-others \"tsc -w\" \"nodemon --inspect ./lib/app.js\"",
+    "lint": "tslint -q -p . -c tslint.json"
   },
   "author": "Microsoft",
   "license": "MIT",
@@ -15,8 +17,10 @@
     "botbuilder": "^4.3.4",
     "botbuilder-ai": "^4.3.4",
     "botframework-config": "^4.3.4",
+    "global-tunnel-ng": "^2.7.1",
     "mongodb": "^3.2.3",
     "node-fetch": "^2.3.0",
+    "prom-client": "^11.3.0",
     "restify": "^7.7.0",
     "ts-jest": "^24.0.2"
   },
@@ -33,6 +37,7 @@
     "dotenv": "^8.0.0",
     "jest": "^24.8.0",
     "nodemon": "^1.18.11",
+    "tslint": "^5.16.0",
     "typescript": "^3.4.5"
   },
   "engines": {
