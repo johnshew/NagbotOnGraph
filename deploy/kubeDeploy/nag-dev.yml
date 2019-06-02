@@ -55,6 +55,8 @@ metadata:
   name: nagbot-web-service-dev
   labels:
     app: nagbotdev
+  annotations:
+    prometheus.io/scrape: 'true'
 spec:
   selector:
     app: nagbotdev
