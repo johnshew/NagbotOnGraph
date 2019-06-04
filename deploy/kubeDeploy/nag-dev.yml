@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
 kind: Deployment
 metadata:
@@ -16,7 +17,7 @@ spec:
     spec:
       containers:
       - name: nagbotongraph
-        image: johnshew/nagbotongraph:dev
+        image: johnshew/nagbotongraph:142
         imagePullPolicy: Always
         env:
         - name: appId
@@ -25,22 +26,22 @@ spec:
               name: envfile
               key: appId
         - name: appPassword
-          valueFrom: 
+          valueFrom:
             secretKeyRef:
               name: envfile
               key: appPassword
         - name: mongoConnection
-          valueFrom: 
+          valueFrom:
             secretKeyRef:
               name: envfile
               key: mongoConnection
         - name: luisId
-          valueFrom: 
+          valueFrom:
             secretKeyRef:
               name: envfile
               key: luisId
         - name: luisKey
-          valueFrom: 
+          valueFrom:
             secretKeyRef:
               name: envfile
               key: luisKey
@@ -49,7 +50,6 @@ spec:
           name: rest-port
         - containerPort: 3978
           name: bot-port
-    
 ---
 apiVersion: v1
 kind: Service
@@ -67,8 +67,7 @@ spec:
     protocol: TCP
     port: 80
     targetPort: rest-port
-  type:  LoadBalancer
-  
+  type: LoadBalancer
 ---
 apiVersion: v1
 kind: Service
@@ -84,4 +83,4 @@ spec:
     protocol: TCP
     port: 80
     targetPort: bot-port
-  type:  LoadBalancer
+  type: LoadBalancer
