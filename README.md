@@ -21,7 +21,7 @@ Key technologies used include:
 
 The core application solution should run well on any modern cloud provider with Kubernetes and it will integrate with the above cloud services.
 
-Currently the app is hosted on Azure and is avaialble at http://nagbot.vivitap.com. 
+Currently the app is hosted on Azure and is available at http://nagbot.vivitap.com. 
 
 We also leverage Azure Montioring for cluster health monitoring and alerting.
 
