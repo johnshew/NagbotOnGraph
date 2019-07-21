@@ -2,7 +2,6 @@
 // Use the prom-client module to expose our metrics to Prometheus
 import * as Prometheus from 'prom-client';
 import * as restify from 'restify';
-import { response } from 'spdy';
 import { logger } from './utils';
 const metricsPath = '/metrics';
 
