@@ -5,7 +5,6 @@
 
 trigger:
 - master
-- johnshew-dev
 
 pool:
   vmImage: 'Ubuntu-16.04'
