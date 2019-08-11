@@ -6,7 +6,7 @@ import { logger } from './utils';
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
 const NODE_ENV = process.env.NODE_ENV || 'production';
- const DEPLOYMENT_ENV = process.env.DEPLOYMENT_ENV || 'local';
+const DEPLOYMENT_ENV = process.env.DEPLOYMENT_ENV || 'local';
 
 export class AppConfig {
     public static readonly appId = process.env.appId;
