@@ -19,6 +19,9 @@ az aks create --resource-group=$RgName --name=$ClusterName --node-count=$NodeCou
 az aks install-cli #(TODO: Implement check to see if we need Kubectl)
 az aks get-credentials --resource-group=$RgName --name=$ClusterName
 
+#Enable rights for the dashboard user (TODO: Reduce access level as far as possible from cluster admin for prod.)
+kubectl create clusterrolebinding kubernetes-dashboard -n kube-system --clusterrole=cluster-admin --serviceaccount=kube-system:kubernetes-dashboard
+
 #Install Helm (TODO: Implement check to see if we already have helm.)
 curl -L https://git.io/get_helm.sh | bash # installs latest because we like to live on the edge.
 

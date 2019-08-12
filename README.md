@@ -18,14 +18,15 @@ Key technologies used include:
 * Microsoft LUIS - natural language understanding
 * Kubernetes - reliable operations 
 * Prometheus - app and execution metrics
+* Jaeger - distributed tracing
 
 The core application solution should run well on any modern cloud provider with Kubernetes and it will integrate with the above cloud services.
 
-Currently the app is hosted on Azure and is avaialble at http://nagbot.vivitap.com. 
+Currently the app is hosted on Azure and is available at http://nagbot.shew.net. 
 
 We also leverage Azure Montioring for cluster health monitoring and alerting.
 
-## Getting started
+# Getting started
 
 To get started you will need to have:
 * A bot configured on Azure
@@ -33,28 +34,28 @@ To get started you will need to have:
 * A Mongo database
 
 With this in place:
-* Create a .env file containing important keys the application will use
+* Create a .env file containing the keys the application will use
 * Start the application and run it locally
 
 These steps are covered here a bit more detail.
 
-### Configure the Bot and LUIS services
+## Configure the Bot and LUIS services
 
 Instructions on creating a bot and luis applications are here:  `!!! TODO`
 
-You will need to config your Bot enpoints to support the API and login directs.
+You will need to config your Bot endpoints to support the API and login redirects.
 
-For the login redirects you will neet to add http://localhost:8080 to test locally.
+For the login redirects, to test locally, you will neet to add http://localhost:8080.
 
-For the bot API you will need to configure it to http://localhost:3978 to test locally.
+For the bot API, to test locally, you will need to configure it support http://localhost:3978.
 
-### Instantiate a Mongo database
+## Instantiate a Mongo database
 
 For testing locally it is very easy to configure a mongodb container and run it on docker.  No special setup needs to be done and the app will create the database on starup.
 
 Various options exist for hosted Mongo DB solutions - we are currently using Azure CosmosDB.
 
-### Create the .env file
+## Create the .env file
 
 Create an .evn file with the following keys:
 
@@ -66,7 +67,7 @@ luisId={ LUIS app id }
 luisKey={ LUIS }
 ```
 
-### Run the app
+## Run the app
 
 With the preliminaries about out of the way you should be able to run the app
 
@@ -85,16 +86,18 @@ Also in the `deploy/` directory you will find a `fluxDeploy/` to enable git ops 
 
 To use the gitops approach you will need to add a flux deployment key to your github repository.  See teh `deploy-gitops.sh` script for the details.
 
-# Contributions
+# Additional Information
+
+## Contributions  
 
 We welcome contributions but response time will be very slow.
 
-See the [Contributor Guide](./.github/contibuting.md)
+See the [Contributors Guide](./.github/contibuting.md).
 
-# Code of Conduct
+## Code of Conduct
 
-See the [Code of Conduct Guide](./.github/CODE_OF_CONDUCT.md)
+See the [Code of Conduct Guide](./.github/CODE_OF_CONDUCT.md).
 
-# Additional notes
+## Notes
 
-[Notes](./notes.md)
+Various [Notes](./notes.md) about the project are available.

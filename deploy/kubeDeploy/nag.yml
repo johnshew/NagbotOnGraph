@@ -42,6 +42,8 @@ spec:
             secretKeyRef:
               name: envfile
               key: luisKey
+        - name: DEPLOYMENT_ENV
+          value: "production"
         ports:
         - containerPort: 8080
           name: rest-port

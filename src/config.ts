@@ -6,13 +6,14 @@ import { logger } from './utils';
 const ENV_FILE = path.join(__dirname, '../.env');
 dotenv.config({ path: ENV_FILE });
 const NODE_ENV = process.env.NODE_ENV || 'production';
+const DEPLOYMENT_ENV = process.env.DEPLOYMENT_ENV || 'local';
 
 export class AppConfig {
     public static readonly appId = process.env.appId;
     public static readonly appPassword = process.env.appPassword;
     public static readonly mongoConnection = process.env.mongoConnection;
     public static readonly httpLocalServerPort = process.env.port || process.env.PORT || '8080';
-    public static readonly publicServer = new URL('https://nagbotdev.shew.net');
+    public static readonly publicServer = (DEPLOYMENT_ENV === 'local') ? new URL(`http://localhost${AppConfig.httpLocalServerPort}`) : (DEPLOYMENT_ENV === 'dev') ? new URL('https://nagbotdev.shew.net') :  new URL('https://nagbot.shew.net');
     public static readonly authPath = '/auth';
     public static readonly authUrl = new URL(AppConfig.authPath, AppConfig.publicServer);
     public static readonly botLoginPath = '/bot-login';
