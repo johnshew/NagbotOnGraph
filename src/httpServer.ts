@@ -75,6 +75,7 @@ function configureServer(httpServer: restify.Server) {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
+        
         console.log(logger`redirecting to ${authUrl} `);
         res.redirect(authUrl, next);
     });
@@ -132,6 +133,23 @@ function configureServer(httpServer: restify.Server) {
     // Authentication logic for bot
 
     httpServer.get('/bot-login', (req, res, next) => {
+        const host = req.headers.host;
+        const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
+        const conversationKey = req.query.conversationKey || '';
+        const location = req.query.redirectUrl;
+        const authUrl = app.authManager.authUrl({
+            state: JSON.stringify({
+                key: conversationKey,
+                redirect: protocol + host + AppConfig.authPath,
+                url: location,
+            }),
+
+        });
+        console.log(logger`redirecting to ${authUrl}`);
+        res.redirect(authUrl, next);
+    });
+
+    httpServer.get('/qr-login', (req, res, next) => {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         const conversationKey = req.query.conversationKey || '';
