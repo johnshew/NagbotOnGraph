@@ -3,7 +3,7 @@ import * as restify from 'restify';
 import * as qr from 'qrcode';
 
 import { OpenTypeExtension, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
-import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
+import { htmlPage, htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
 import { app, AppConfig } from './nagbotApp';
 import { notifyUser } from './notifications';
 import { addMetricsAPI, addResponseMetrics, RequestCounters } from './prometheus';
@@ -67,27 +67,10 @@ function configureServer(httpServer: restify.Server) {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
-        console.log(logger`redirecting to ${authUrl} `);
-        res.redirect(authUrl, next);
-    });
-
-    httpServer.get('/qr', (req, res, next) => {
-        const host = req.headers.host;
-        const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
-        const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });
 
-    httpServer.get('/qr/:tempUserId', (req, res, next) => {
-        res.setHeader('Content-type', 'image/png');
-        qr.toFileStream(res, `https://nagbot.shew.net/login?id=${req.params.tempUserId}`,
-            { scale: 10 },
-            (err) => {
-                res.end();
-                next();
-            });
-    });
 
     httpServer.get('/auth', async (req, res, next) => {
         try {
@@ -148,14 +131,40 @@ function configureServer(httpServer: restify.Server) {
         res.redirect(authUrl, next);
     });
 
+    // Authentication logic for QR codes
+
+    httpServer.get('/qr', (req, res, next) => {
+        let code = 'xyzzy';
+        let html = htmlPage(`Nagbot QR Login`, 
+        /*html*/ `
+        <body>
+            <img src='/qr/${code}'/>
+            <a href='/qr/${code}'>Continue</a>
+        </body>
+        `);
+        res.end(html);
+        next();
+    });
+
+    httpServer.get('/qr/:tempUserId', (req, res, next) => {
+        // check to see if the QR code has been approved or timed out
+        res.setHeader('Content-type', 'image/png');
+        qr.toFileStream(res, `https://nagbot.shew.net/login?id=${req.params.tempUserId}`,
+            { scale: 10 },
+            (err) => {
+                res.end();
+                next();
+            });
+    });
+
     httpServer.get('/qr-login', (req, res, next) => {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
-        const conversationKey = req.query.conversationKey || '';
-        const location = req.query.redirectUrl;
+        const qrKey = req.query.qrKey || '';
+        const location = req.query.redirectUrl || '/';
         const authUrl = app.authManager.authUrl({
             state: JSON.stringify({
-                key: conversationKey,
+                key: qrKey,
                 redirect: protocol + host + AppConfig.authPath,
                 url: location,
             }),

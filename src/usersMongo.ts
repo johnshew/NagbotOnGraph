@@ -12,7 +12,7 @@ export class UsersMongo extends Users {
     constructor(mongoConnection: string) {
         super();
         this.ready = new Promise<UsersMongo>(async (resolve, reject) => {
-            MongoClient.connect(mongoConnection, { useNewUrlParser: true }, async (err, client) => {
+            MongoClient.connect(mongoConnection, { useNewUrlParser: true, useUnifiedTopology: true  }, async (err, client) => {
                 try {
                     if (err) { console.log(`Error: ${err}`); return; }
                     console.log(logger`mongo connected`);
