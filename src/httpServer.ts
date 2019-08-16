@@ -75,8 +75,7 @@ function configureServer(httpServer: restify.Server) {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
-        
-        console.log(logger`redirecting to ${authUrl} `);
+        console.log(logger`redirecting to ${authUrl} `); 
         res.redirect(authUrl, next);
     });
 
