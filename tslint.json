@@ -26,6 +26,9 @@
         "max-classes-per-file": [
             false
         ],
+        "ordered-imports": [
+            false
+        ],
         "object-literal-sort-keys": {
             "severity": "warning",
             "options": [

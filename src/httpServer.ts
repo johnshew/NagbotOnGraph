@@ -1,5 +1,6 @@
 import * as http from 'http';
 import * as restify from 'restify';
+import * as qr from 'qrcode';
 
 import { OpenTypeExtension, OutlookTask } from '@microsoft/microsoft-graph-types-beta';
 import { htmlPageFromList, htmlPageFromObject, htmlPageMessage } from './htmlTemplates';
@@ -70,6 +71,24 @@ function configureServer(httpServer: restify.Server) {
         res.redirect(authUrl, next);
     });
 
+    httpServer.get('/qr', (req, res, next) => {
+        const host = req.headers.host;
+        const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
+        const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
+        console.log(logger`redirecting to ${authUrl}`);
+        res.redirect(authUrl, next);
+    });
+
+    httpServer.get('/qr/:tempUserId', (req, res, next) => {
+        res.setHeader('Content-type', 'image/png');
+        qr.toFileStream(res, `https://nagbot.shew.net/login?id=${req.params.tempUserId}`,
+            { scale: 10 },
+            (err) => {
+                res.end();
+                next();
+            });
+    });
+
     httpServer.get('/auth', async (req, res, next) => {
         try {
             // look for authorization code coming in (indicates redirect from interative login/consent)
@@ -113,6 +132,23 @@ function configureServer(httpServer: restify.Server) {
     // Authentication logic for bot
 
     httpServer.get('/bot-login', (req, res, next) => {
+        const host = req.headers.host;
+        const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
+        const conversationKey = req.query.conversationKey || '';
+        const location = req.query.redirectUrl;
+        const authUrl = app.authManager.authUrl({
+            state: JSON.stringify({
+                key: conversationKey,
+                redirect: protocol + host + AppConfig.authPath,
+                url: location,
+            }),
+
+        });
+        console.log(logger`redirecting to ${authUrl}`);
+        res.redirect(authUrl, next);
+    });
+
+    httpServer.get('/qr-login', (req, res, next) => {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
         const conversationKey = req.query.conversationKey || '';
@@ -251,7 +287,7 @@ function configureServer(httpServer: restify.Server) {
             res.status(200);
             res.end();
             return next();
-        } catch (err) { error = error; }
+        } catch (err) { error = err; }
         res.status(400);
         res.json({ error });
         res.end();
