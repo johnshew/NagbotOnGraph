@@ -31,8 +31,8 @@ export class Server {
         });
     }
 
-    public taskEditUrl(taskId: string) { return `${AppConfig.publicServer.href}task/${taskId}`; }  // was encodeURIComponent(taskId)}`; }
-    public taskCompleteUrl(taskId: string) { return `${AppConfig.publicServer.href}task/${encodeURIComponent(taskId)}/complete`; }
+    public taskEditUrl(taskId: string) { return `${AppConfig.webServerUrl.href}task/${taskId}`; }  // was encodeURIComponent(taskId)}`; }
+    public taskCompleteUrl(taskId: string) { return `${AppConfig.webServerUrl.href}task/${encodeURIComponent(taskId)}/complete`; }
 }
 
 function configureServer(httpServer: restify.Server) {
@@ -66,7 +66,8 @@ function configureServer(httpServer: restify.Server) {
     httpServer.get('/login', (req, res, next) => {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
-        const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: protocol + host });
+        const state = { originalUrl: req.params.originalUrl, qrKey: req.params.qrKey }
+        const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: JSON.stringify(state) });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });
@@ -86,12 +87,11 @@ function configureServer(httpServer: restify.Server) {
                 if (profile.mail) { user.email = profile.mail; }
                 await app.users.set(authContext.oid, user);
                 res.header('Set-Cookie', 'userId=' + authContext.authKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
-                const stateString: string = req.query.state;
                 let state: any = {};
-                try { state = JSON.parse(stateString); } catch (e) {
+                try { state = JSON.parse(req.query.state); } catch (e) {
                     console.log(logger`bad state string`);
                 }
-                if (!state.url) { state.url = '/'; }
+                if (!state.originalUrl) { state.originalUrl = '/'; }
                 if (state.key) {
                     // should send verification code to user via web and wait for it on the bot.
                     // ignore for now.
@@ -99,8 +99,8 @@ function configureServer(httpServer: restify.Server) {
                     await app.botService.processActivityInConversation(conversation, async (turnContext) => {
                         return await turnContext.sendActivity('Connected.');
                     });
-                } // else no state.key so it is a plain web login
-                res.redirect(state.url, next);
+                }
+                res.redirect(state.originalUrl, next);
                 return;
             }
         } catch (reason) {
@@ -134,22 +134,44 @@ function configureServer(httpServer: restify.Server) {
     // Authentication logic for QR codes
 
     httpServer.get('/qr', (req, res, next) => {
-        let code = 'xyzzy';
-        let html = htmlPage(`Nagbot QR Login`, 
+        let qrKey = req.query.qrKey || null;
+
+        if (!qrKey) {
+            qrKey = 'xyzzy';
+            res.redirect(`/qr?qrKey=${qrKey}`, next);
+            return;
+        }
+
+        if (/* check for qrKey processed */ false) {
+            // should check for timeout
+            // set authCookie
+            // Redirect to home
+        }
+
+        let html =
         /*html*/ `
-        <body>
-            <img src='/qr/${code}'/>
-            <a href='/qr/${code}'>Continue</a>
-        </body>
-        `);
+            <html>
+            <head>
+                <META HTTP-EQUIV="refresh" CONTENT="15">
+            </head>
+
+            <body style="text-align: center; font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif">
+                <img src='/qr-code/${qrKey}' /><br />
+                This will automatically refresh<br/><br/>
+                <a href='/qr?qrKey=${qrKey}'>Continue</a>
+            </body>
+
+            </html>`;
         res.end(html);
         next();
     });
 
-    httpServer.get('/qr/:tempUserId', (req, res, next) => {
+    httpServer.get('/qr-code/:tempUserId', (req, res, next) => {
         // check to see if the QR code has been approved or timed out
+        const loginUrl = `${AppConfig.webServerUrl.href}login?qrKey=${req.params.tempUserId}`;
+        console.log(logger`QR Login URL ${loginUrl}`);
         res.setHeader('Content-type', 'image/png');
-        qr.toFileStream(res, `https://nagbot.shew.net/login?id=${req.params.tempUserId}`,
+        qr.toFileStream(res, loginUrl,
             { scale: 10 },
             (err) => {
                 res.end();
@@ -158,20 +180,7 @@ function configureServer(httpServer: restify.Server) {
     });
 
     httpServer.get('/qr-login', (req, res, next) => {
-        const host = req.headers.host;
-        const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
-        const qrKey = req.query.qrKey || '';
-        const location = req.query.redirectUrl || '/';
-        const authUrl = app.authManager.authUrl({
-            state: JSON.stringify({
-                key: qrKey,
-                redirect: protocol + host + AppConfig.authPath,
-                url: location,
-            }),
 
-        });
-        console.log(logger`redirecting to ${authUrl}`);
-        res.redirect(authUrl, next);
     });
 
     //// Endpoints that are included in notifications

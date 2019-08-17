@@ -121,7 +121,7 @@ export class NagBot {
                         // await this.conversationAccessor.set(turnContext, conversation);
                         // await this.conversationState.saveChanges(turnContext);
 
-                        const signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${AppConfig.botLoginUrl}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
+                        const signinCardAttachment = CardFactory.signinCard('Office 365 Login', `${AppConfig.botLoginUrl.href}?conversationKey=${conversation.tempVerficationKey}`, 'Click below to connect NagBot to your tasks.');
 
                         if (turnContext.activity.channelId === 'msteams') {
                             // hack to fix teams.
