@@ -66,12 +66,11 @@ function configureServer(httpServer: restify.Server) {
     httpServer.get('/login', (req, res, next) => {
         const host = req.headers.host;
         const protocol = host.toLowerCase().includes('localhost') || host.includes('127.0.0.1') ? 'http://' : 'https://';
-        const state = { originalUrl: req.params.originalUrl, qrKey: req.params.qrKey }
+        const state = { originalUrl: req.query.originalUrl, qrKey: req.query.qrKey };
         const authUrl = app.authManager.authUrl({ redirect: new URL(AppConfig.authPath, protocol + host).href, state: JSON.stringify(state) });
         console.log(logger`redirecting to ${authUrl}`);
         res.redirect(authUrl, next);
     });
-
 
     httpServer.get('/auth', async (req, res, next) => {
         try {
@@ -92,13 +91,15 @@ function configureServer(httpServer: restify.Server) {
                     console.log(logger`bad state string`);
                 }
                 if (!state.originalUrl) { state.originalUrl = '/'; }
-                if (state.key) {
+                if (state.conversationKey) {
                     // should send verification code to user via web and wait for it on the bot.
                     // ignore for now.
-                    const conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.key, authContext.oid);
+                    const conversation = await app.conversationManager.setOidForUnauthenticatedConversation(state.conversationKey, authContext.oid);
                     await app.botService.processActivityInConversation(conversation, async (turnContext) => {
                         return await turnContext.sendActivity('Connected.');
                     });
+                } else if (state.qrKey) {
+                    qrLogins.set(state.qrKey, authContext.authKey);
                 }
                 res.redirect(state.originalUrl, next);
                 return;
@@ -121,7 +122,7 @@ function configureServer(httpServer: restify.Server) {
         const location = req.query.redirectUrl;
         const authUrl = app.authManager.authUrl({
             state: JSON.stringify({
-                key: conversationKey,
+                conversationKey,
                 redirect: protocol + host + AppConfig.authPath,
                 url: location,
             }),
@@ -133,6 +134,8 @@ function configureServer(httpServer: restify.Server) {
 
     // Authentication logic for QR codes
 
+    const qrLogins = new Map<string, string>();
+
     httpServer.get('/qr', (req, res, next) => {
         let qrKey = req.query.qrKey || null;
 
@@ -142,13 +145,15 @@ function configureServer(httpServer: restify.Server) {
             return;
         }
 
-        if (/* check for qrKey processed */ false) {
+        if (qrLogins.has(qrKey)) {
             // should check for timeout
-            // set authCookie
-            // Redirect to home
+            res.header('Set-Cookie', 'userId=' + qrLogins.get(qrKey) + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
+            qrLogins.delete(qrKey);
+            res.redirect('/', next);
+            return;
         }
 
-        let html =
+        const html =
         /*html*/ `
             <html>
             <head>
@@ -162,6 +167,7 @@ function configureServer(httpServer: restify.Server) {
             </body>
 
             </html>`;
+        res.setHeader('Content-Type', 'text/html');
         res.end(html);
         next();
     });
@@ -177,10 +183,6 @@ function configureServer(httpServer: restify.Server) {
                 res.end();
                 next();
             });
-    });
-
-    httpServer.get('/qr-login', (req, res, next) => {
-
     });
 
     //// Endpoints that are included in notifications
