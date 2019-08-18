@@ -7,7 +7,11 @@ var spaHome = Vue.component("Home", {
         <p>Your id is {{ id }}</p>
     </div>
     <div v-else>
-        You are not logged in. Please <a href="/login">login</a>
+        You are not logged in.<br/>
+        <br/>
+        Please <a href="/login">login</a>.<br/>
+        <br/>
+        Or you can login on your mobile device using a <a href='/qr'>QR code</a>.
     </div>
 </div>`,
     props: {

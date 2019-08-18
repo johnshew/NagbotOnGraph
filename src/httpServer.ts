@@ -85,7 +85,7 @@ function configureServer(httpServer: restify.Server) {
                 if (profile.preferredName) { user.preferredName = profile.preferredName; }
                 if (profile.mail) { user.email = profile.mail; }
                 await app.users.set(authContext.oid, user);
-                res.header('Set-Cookie', 'userId=' + authContext.authKey + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
+                res.header('Set-Cookie', 'userId=' + authContext.authKey + '; path=/; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
                 let state: any = {};
                 try { state = JSON.parse(req.query.state); } catch (e) {
                     console.log(logger`bad state string`);
@@ -147,7 +147,7 @@ function configureServer(httpServer: restify.Server) {
 
         if (qrLogins.has(qrKey)) {
             // should check for timeout
-            res.header('Set-Cookie', 'userId=' + qrLogins.get(qrKey) + '; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
+            res.header('Set-Cookie', 'userId=' + qrLogins.get(qrKey) + '; path=/; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
             qrLogins.delete(qrKey);
             res.redirect('/', next);
             return;
@@ -397,6 +397,45 @@ function configureServer(httpServer: restify.Server) {
             await graphPatch(req, res, next,
                 `https://graph.microsoft.com/beta/me/outlook/tasks/${id}?${app.graph.queryExpandNagExtensions}`, data);
         }
+    });
+
+    httpServer.get('/test-cookies', (req, res, next) => {
+        const cookies = req.headers.cookie;
+        const html =
+    /*html*/ `
+        <html>
+        <head>
+            <META HTTP-EQUIV="refresh" CONTENT="15">
+        </head>
+
+        <body style="text-align: center; font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif">
+            current cookies: ${cookies}
+        </body>
+        </html>`;
+        res.setHeader('Content-Type', 'text/html');
+        res.end(html);
+        next();
+    });
+
+    httpServer.get('/test-set-cookie', (req, res, next) => {
+        const cookies = req.headers.cookie;
+        const html =
+    /*html*/ `
+        <html>
+        <head>
+            <META HTTP-EQUIV="refresh" CONTENT="15">
+        </head>
+
+        <body style="text-align: center; font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif">
+            Cookie should be set.<br/>
+            <br/>
+            <a href='/test-cookies'>Show cookies</a>
+        </body>
+        </html>`;
+        res.setHeader('Set-Cookie', 'userId=' + 'xyzzy' + '; path=/; expires=' + new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString());
+        res.setHeader('Content-Type', 'text/html');
+        res.end(html);
+        next();
     });
 }
 

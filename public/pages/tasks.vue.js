@@ -12,7 +12,9 @@ var spaTasks = Vue.component("Tasks", {
                 <router-link :to="{ path: '/task/'+task.id }" style="text-decoration:none" headline>
                     {{ task.subject }}
                 </router-link>
-                <div>{{ new Date(task.dueDateTime.dateTime).toDateString() }}</div>
+                <div style="color: grey; font-size: smaller">
+                    {{ task.dueDateTime ? new Date(task.dueDateTime.dateTime).toDateString() : 'no due date' }}
+                </div>
             </v-flex>
             <v-flex shrink align-center pa-1 >
                 <v-icon v-if="!task.categories.includes('NagMe')" color="grey lighten-1" @click="NagChange(task)"> alarm_off </v-icon>
@@ -23,7 +25,8 @@ var spaTasks = Vue.component("Tasks", {
             <v-divider v-if="index + 1 < tasks.length" :key="index"></v-divider>
         </v-layout>
     </template>
-</v-container>`,
+</v-container>
+`,
 
     props: ["title"],
     data() {
