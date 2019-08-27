@@ -46,7 +46,7 @@ export class App {
                 this.botService.adapter.onTurnError = async (turnContext, error) => {
                     console.error(`bot onTurn Error: ${error}`);
                 };
-                this.appHttpServer = new AppHttpServer(AppConfig.httpLocalServerPort);
+                this.appHttpServer = new AppHttpServer(AppConfig.webServerPort);
 
                 this.users = await new UsersMongo(AppConfig.mongoConnection).ready;
 

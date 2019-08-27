@@ -8,13 +8,15 @@ var spaTaskDetails = Vue.component("TaskDetails", {
             <v-icon v-else color="green darken-1" @click="NagChange(task)"> alarm_on </v-icon>
         </v-flex>
         <v-flex shrink align-top pa-1>
-            <v-icon v-if="task.status === 'notStarted'" color="blue" @click="StatusChange(task)">check_circle_outline
+            <v-icon v-if="task.status === 'completed'" color="blue" @click="StatusChange(task)">check_circle_outline
             </v-icon>
             <v-icon v-else color="blue" @click="StatusChange(task)">radio_button_unchecked</v-icon>
         </v-flex>
         <v-flex grow pa-1>
             <div>{{ task.subject }}</div>
-            <p>{{ new Date(task.dueDateTime.dateTime).toDateString() }}  {{ task.status }}</p>
+            <p style="font-size: smaller; color:lightblue">
+                {{ task.dueDateTime && new Date(task.dueDateTime.dateTime).toDateString() }}  
+                {{ task.status === "notStarted" ? 'not started' : task.status }}</p>
             <div v-html="task.body.content"></div>
             <template v-for="category in task.categories">
             <v-chip>

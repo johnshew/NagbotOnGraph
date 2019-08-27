@@ -9,7 +9,7 @@ export function htmlPrettyPrint(item: any) {
     return `<pre>${JSON.stringify(item, null, 2)}</pre>`;
 }
 
-function htmlPage(title: string, body: string) { return `
+export function htmlPage(title: string, body: string) { return /*html*/`
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

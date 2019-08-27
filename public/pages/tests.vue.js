@@ -10,6 +10,8 @@ var spaTests = Vue.component("Tasks", {
         <li><a href='/test-profile'>profile</a> </li>
         <li><a href='/test-update'>update profile</a></li>
         <li><a href='/test-notify'>use bots to notify</a></li>
+        <li><a href='/test-cookies'>show cookies</a></li>
+        <li><a href='/test-set-cookie'>test setting auth cookie</a></li>
         <li><a href='/metrics'>metrics</a></li>
     </ul>
     <p></p>
