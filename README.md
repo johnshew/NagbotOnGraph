@@ -2,7 +2,7 @@
 
 A conversational agent to drive task follow up.
 
-This is indended to operate demonstrate what would be involved in connecting an app to the Microsoft graph.
+This is indended to demonstrate what would be involved in connecting an app to the Microsoft graph.
 
 In terms of approach, we minimized the use of frameworks and middleware that obscure the execution and operations of the solutions.  
 
