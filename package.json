@@ -20,7 +20,7 @@
     "botframework-config": "^4.5.3",
     "global-tunnel-ng": "^2.7.1",
     "mongodb": "^3.3.0",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.7",
     "prom-client": "^11.5.3",
     "qrcode": "^1.4.1",
     "restify": "^8.4.0"
